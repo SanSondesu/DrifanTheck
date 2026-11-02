@@ -1,91 +1,90 @@
 <!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#d8eee2">
-<title>こもれび水槽 - Turtle Aquarium</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#dcefe4"><title>こもれび水槽</title>
 <style>
-:root{color-scheme:light;font-family:ui-rounded,"Hiragino Maru Gothic ProN","Yu Gothic",system-ui,sans-serif}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#d8eee2;color:#24463d}
-#scene{position:fixed;inset:0}canvas{display:block}
-.panel{position:fixed;z-index:2;background:#f7fff0d9;border:1px solid #ffffffaa;box-shadow:0 10px 35px #24463d18;backdrop-filter:blur(12px);border-radius:22px}
-header{top:16px;left:16px;padding:12px 17px;max-width:calc(100% - 32px)}
-h1{font-size:18px;margin:0 0 3px;letter-spacing:.04em}header p{margin:0;font-size:11px;color:#628276}
-#info{left:16px;bottom:16px;padding:13px 16px;width:min(280px,calc(100% - 32px))}
-#name{font-size:16px;font-weight:800}#mood{font-size:12px;color:#668477;margin-top:3px}
-#tip{font-size:11px;color:#789087;margin-top:9px;line-height:1.6}
-.controls{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:9px;z-index:3}
-button{border:1px solid #ffffffb0;background:#f7fff0e8;color:#31594c;border-radius:16px;padding:11px 14px;font:600 12px inherit;box-shadow:0 5px 18px #24463d18;backdrop-filter:blur(10px);cursor:pointer}
-button:active{transform:scale(.97)}#hint{position:fixed;right:16px;top:18px;font-size:10px;color:#547568;background:#f7fff0b8;border-radius:14px;padding:8px 11px;z-index:2}
-@media(max-width:520px){header{top:10px;left:10px}#hint{top:78px;right:10px}#info{left:10px;bottom:10px}.controls{right:10px;bottom:10px}button{padding:10px 12px}}
-</style>
-</head>
-<body>
-<div id="scene"></div>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;color:#31594b;background:#dcefe4}canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.panel{position:fixed;z-index:2;background:rgba(250,255,245,.84);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 28px rgba(57,100,78,.09);backdrop-filter:blur(12px);border-radius:23px}
+header{top:15px;left:15px;padding:13px 18px;max-width:calc(100% - 30px)}h1{font-size:19px;margin:0 0 3px;letter-spacing:.06em}header p{font-size:11px;color:#769084;margin:0}
+#hint{position:fixed;right:15px;top:92px;z-index:2;padding:8px 12px;border-radius:16px;background:#f7fff0bd;color:#789084;font-size:10px}
+#info{left:15px;bottom:15px;width:min(290px,calc(100% - 30px));padding:13px 16px}#name{font-size:17px;font-weight:800}#mood{font-size:12px;color:#6c897b;margin-top:3px}#tip{font-size:10px;color:#8aa094;margin-top:8px;line-height:1.5}
+.controls{position:fixed;right:15px;bottom:15px;z-index:3;display:flex;flex-direction:column;gap:8px}button{border:1px solid #fff;background:rgba(250,255,245,.9);color:#426b59;border-radius:17px;padding:11px 14px;font:600 12px system-ui;box-shadow:0 5px 18px #31594b14;backdrop-filter:blur(10px)}button:active{transform:scale(.97)}
+@media(max-width:520px){header{top:10px;left:10px}#hint{top:83px;right:10px}#info{left:10px;bottom:10px;width:calc(100% - 20px);max-width:260px}.controls{right:10px;bottom:10px}button{padding:10px 11px;font-size:11px}}
+</style></head><body>
+<canvas id="pond"></canvas>
 <header class="panel"><h1>こもれび水槽</h1><p>小さな水辺で、のんびり暮らすカメを眺めよう。</p></header>
-<div id="hint">ドラッグ：視点を回す　／　ピンチ：ズーム</div>
-<section id="info" class="panel"><div id="name">みどり</div><div id="mood">水草のそばを、ゆっくり散歩中。</div><div id="tip">カメをタップすると、こちらを向いてくれるかも。</div></section>
+<div id="hint">画面をなぞって、水槽を見渡そう</div>
+<section id="info" class="panel"><div id="name">みどり</div><div id="mood">水草のそばで、ぷかぷか。</div><div id="tip">カメをタップすると、こちらに気づくよ。</div></section>
 <div class="controls"><button id="camera">⟳　視点をリセット</button><button id="pause">Ⅱ　ひと休み</button><button id="light">☼　昼 / 夕方</button></div>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-
-const mount=document.querySelector('#scene');
-const scene=new THREE.Scene();scene.background=new THREE.Color('#c9e8dc');scene.fog=new THREE.Fog('#c9e8dc',10,24);
-const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);camera.position.set(6,5.2,8);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;mount.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1.3,0);controls.enableDamping=true;controls.minDistance=4;controls.maxDistance=13;controls.maxPolarAngle=Math.PI*.48;
-scene.add(new THREE.HemisphereLight(0xe8fff4,0x58796b,2.0));
-const sun=new THREE.DirectionalLight(0xfff0cf,3.0);sun.position.set(-4,8,5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-8;sun.shadow.camera.right=8;sun.shadow.camera.top=8;sun.shadow.camera.bottom=-8;scene.add(sun);
-const fill=new THREE.PointLight(0x8bd8c3,1.2,15);fill.position.set(4,3,-3);scene.add(fill);
-const mat=(color,roughness=.75,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-const groundMat=mat('#d5c7a2'), glassMat=new THREE.MeshPhysicalMaterial({color:0xa5d9d0,transparent:true,opacity:.12,roughness:.12,metalness:.05,side:THREE.DoubleSide});
-function box(w,h,d,m,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;scene.add(o);return o}
-function sphere(parent,scale,material,pos){const o=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),material);o.scale.set(...scale);o.position.set(...pos);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
-// aquarium base and softly suggested glass walls
-box(10,.35,7,mat('#9caa88'),0,-.18,0);box(9.7,.12,6.7,groundMat,0,.04,0);
-const water=new THREE.Mesh(new THREE.PlaneGeometry(9.65,6.65),new THREE.MeshPhysicalMaterial({color:0x79c9c0,transparent:true,opacity:.16,roughness:.12,metalness:.08}));water.rotation.x=-Math.PI/2;water.position.y=3.25;scene.add(water);
-const glass=new THREE.Group();scene.add(glass);
-const wallGeo=[[9.8,3.3,.07,0,1.6,-3.35],[9.8,3.3,.07,0,1.6,3.35],[.07,3.3,6.7,-4.9,1.6,0],[.07,3.3,6.7,4.9,1.6,0]];
-wallGeo.forEach(a=>{const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),glassMat);m.position.set(a[3],a[4],a[5]);glass.add(m)});
-const sand=new THREE.Mesh(new THREE.PlaneGeometry(9.7,6.7),groundMat);sand.rotation.x=-Math.PI/2;sand.position.y=.12;sand.receiveShadow=true;scene.add(sand);
-// pebbles
-for(let i=0;i<85;i++){const r=.045+Math.random()*.12;const p=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),mat(i%3?'#b9ad8b':'#8e9b7c'));p.position.set((Math.random()-.5)*9,.18,(Math.random()-.5)*6);p.scale.y=.5;p.castShadow=true;scene.add(p)}
-// stones and driftwood
-const rockMat=mat('#879b86');for(let i=0;i<7;i++){const r=new THREE.Mesh(new THREE.DodecahedronGeometry(.45+Math.random()*.45,1),rockMat);r.position.set(-3.5+i*.35,.35,-1.7+Math.sin(i)*.3);r.scale.y=.65;r.rotation.set(Math.random(),Math.random(),Math.random());r.castShadow=true;r.receiveShadow=true;scene.add(r)}
-const wood= new THREE.Mesh(new THREE.CylinderGeometry(.13,.22,2.6,12),mat('#806b4e'));wood.position.set(2,.55,-1.6);wood.rotation.z=Math.PI/2.8;wood.rotation.x=.3;wood.castShadow=true;scene.add(wood);
-// plants with curved stems and leaves
-const plantMat=mat('#4d9972'),leafMat=mat('#77b77e');
-for(let i=0;i<15;i++){const x=(Math.random()-.5)*8,z=(Math.random()-.5)*5;const h=.7+Math.random()*1.1;const stem=new THREE.Mesh(new THREE.CylinderGeometry(.018,.035,h,7),plantMat);stem.position.set(x,.2+h/2,z);stem.rotation.z=(Math.random()-.5)*.35;scene.add(stem);for(let j=0;j<4;j++){const leaf=sphere(scene,[.11,.34,.045],leafMat,[x+(j%2?-.18:.18),.35+h*(j+1)/5,z]);leaf.rotation.z=(j%2?-.7:.7);leaf.rotation.x=.25}}
-// turtle group: face points toward +X
-const turtle=new THREE.Group();scene.add(turtle);turtle.position.set(-.2,.48,.25);
-const shell=mat('#456e42'),shellLight=mat('#71934f'),skin=mat('#8bbd72'),skinDark=mat('#5f945d'),belly=mat('#c7b77e'),black=mat('#172b25',.25),shine=new THREE.MeshBasicMaterial({color:'#ffffff'});
-sphere(turtle,[1.05,.53,.78],belly,[0,.25,0]);
-sphere(turtle,[1.12,.62,.84],shell,[0,.66,0]);
-// shell rim
-const rim=new THREE.Mesh(new THREE.TorusGeometry(.82,.09,12,64),shellLight);rim.rotation.x=Math.PI/2;rim.scale.set(1.28,1,.75);rim.position.y=.56;turtle.add(rim);
-// shell scutes laid over dome
-const scutes=[[0,1.17,0],[-.48,1.02,0],[.48,1.02,0],[0,1.02,.48],[0,1.02,-.48],[-.72,.77,.38],[-.72,.77,-.38],[.72,.77,.38],[.72,.77,-.38]];
-scutes.forEach((p,i)=>{const s=new THREE.Mesh(new THREE.SphereGeometry(i===0?.34:.29,24,16),shellLight);s.scale.set(1,.34,1);s.position.set(...p);turtle.add(s);const seam=new THREE.Mesh(new THREE.TorusGeometry(i===0?.27:.23,.012,6,32),shell);seam.scale.set(1,.38,1);seam.position.set(p[0],p[1]+.025,p[2]);turtle.add(seam)});
-// head and neck
-const neck=sphere(turtle,[.62,.3,.34],skin,[.95,.55,0]);neck.rotation.z=-.08;
-const head=sphere(turtle,[.48,.39,.43],skin,[1.42,.65,0]);
-sphere(turtle,[.18,.12,.24],skinDark,[1.76,.52,0]);
-for(const side of [-1,1]){sphere(turtle,[.105,.12,.07],black,[1.53,.78,side*.32]);sphere(turtle,[.035,.042,.025],shine,[1.56,.82,side*.37]);}
-const smile=new THREE.Mesh(new THREE.TorusGeometry(.12,.012,6,24,Math.PI),skinDark);smile.position.set(1.78,.48,.02);smile.rotation.y=Math.PI/2;smile.rotation.z=Math.PI;turtle.add(smile);
-// four sturdy flippers with little scale markings
-const legs=[];for(const side of [-1,1])for(const fore of [-1,1]){const leg=new THREE.Group();leg.position.set(fore*.62,.35,side*.58);turtle.add(leg);const limb=sphere(leg,[.38,.16,.23],skin,[fore*.12,-.03,side*.18]);limb.rotation.y=side*.25;for(let k=0;k<3;k++)sphere(leg,[.055,.035,.045],skinDark,[fore*.35,.01,side*(.12+k*.09)]);legs.push({leg,side,fore})}
-// tiny nostrils
-for(const side of [-1,1])sphere(turtle,[.025,.025,.025],skinDark,[1.84,.64,side*.12]);
-const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let lookAtUntil=0,paused=false,evening=false;
-renderer.domElement.addEventListener('pointerdown',e=>{pointer.x=e.clientX/innerWidth*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;raycaster.setFromCamera(pointer,camera);if(raycaster.intersectObject(turtle,true).length){lookAtUntil=performance.now()+5000;document.querySelector('#mood').textContent='こちらに気づいて、じっと見つめています。'}});
-document.querySelector('#camera').onclick=()=>{camera.position.set(6,5.2,8);controls.target.set(0,1.3,0);controls.update()};
-document.querySelector('#pause').onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?'▶　うごきだす':'Ⅱ　ひと休み';document.querySelector('#mood').textContent=paused?'水の中で、のんびり休憩中。':'水草のそばを、ゆっくり散歩中。'};
-document.querySelector('#light').onclick=()=>{evening=!evening;scene.background.set(evening?'#536b78':'#c9e8dc');scene.fog.color.set(evening?'#536b78':'#c9e8dc');sun.color.set(evening?0xffb879:0xfff0cf);sun.intensity=evening?1.4:3;fill.color.set(evening?0x648bcb:0x8bd8c3)};
-const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const dt=Math.min(clock.getDelta(),.04);if(!paused){turtle.position.y=.48+Math.sin(t*1.5)*.055;turtle.position.x=-.2+Math.sin(t*.34)*.6;turtle.rotation.y=Math.sin(t*.42)*.18+(performance.now()<lookAtUntil?.3:0);turtle.rotation.z=Math.sin(t*1.1)*.025;legs.forEach(({leg,side,fore},i)=>{leg.rotation.z=Math.sin(t*2.3+i)*.18;leg.rotation.x=Math.sin(t*2+i)*.09})}controls.update();renderer.render(scene,camera)}
-animate();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-</script>
-</body></html>
+<script>
+(()=> {
+const canvas=document.getElementById('pond'),ctx=canvas.getContext('2d');
+let W=0,H=0,dpr=1,paused=false,evening=false,angle=0,zoom=1,look=0,touchX=null,lastPinch=0;
+const mood=document.getElementById('mood');
+function resize(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+function rr(x,y,w,h,r,fill){ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function ellipse(x,y,rx,ry,fill,rot=0){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle=fill;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+function line(points,color,width){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()}
+function plant(x,y,s,t){ctx.save();ctx.translate(x,y);ctx.scale(s,s);for(let i=0;i<5;i++){const a=-1.1+i*.48+Math.sin(t*.6+i)*.07;ctx.save();ctx.rotate(a);line([[0,0],[0,-65]],'#548e70',3);ellipse(0,-37,9,24,'#78b58b',-.18);ellipse(0,-55,7,18,'#9bc99b',.12);ctx.restore()}ctx.restore()}
+function drawTurtle(t){
+ const cx=W*.51+Math.sin(t*.28)*W*.045+angle*35,cy=H*.53+Math.sin(t*1.3)*7;
+ const scale=Math.min(W/390,H/700)*zoom*1.08;
+ ctx.save();ctx.translate(cx,cy);ctx.scale(scale,scale);
+ // soft shadow
+ ellipse(0,68,112,18,'rgba(49,91,72,.12)');
+ // rear flippers
+ ellipse(-62,36,36,17,'#83b88c',-.55+Math.sin(t*2)*.12);ellipse(58,36,36,17,'#83b88c',.55-Math.sin(t*2)*.12);
+ // body
+ ellipse(0,18,77,43,'#a4c99a');
+ // front flippers
+ ellipse(-62,-3,38,19,'#8fbe91',-.5+Math.sin(t*2.1)*.1);ellipse(61,-2,38,19,'#8fbe91',.5-Math.sin(t*2.1)*.1);
+ // shell shadow and shell
+ ellipse(-3,-8,83,60,'#547d5b');ellipse(-3,-13,79,57,'#789c68');
+ // shell center panels
+ ellipse(-3,-18,58,42,'#8eaf78');
+ line([[-3,-67],[-3,-48],[-3,-15],[-3,25]],'#648b5e',2);
+ line([[-69,-25],[-43,-27],[-3,-18],[38,-27],[65,-22]],'#648b5e',2);
+ // shell subtle highlights
+ ellipse(-28,-39,23,8,'rgba(225,239,190,.28)',-.25);
+ // neck/head
+ line([[58,-13],[82,-24],[97,-22]],'#8fbd8c',23);
+ ellipse(104,-27,31,25,'#9bc995');
+ // cheeks and eyes
+ ellipse(119,-16,7,5,'#e9a6a0');ellipse(112,-37,4,5,'#365b49');ellipse(113,-39,1.5,1.8,'#fff');
+ // smile
+ ctx.strokeStyle='#547b5c';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(121,-24,7,.2,1.35);ctx.stroke();
+ // tiny nostril
+ ellipse(130,-30,1.6,1.4,'#547b5c');
+ // gentle shell speckles
+ for(let i=0;i<7;i++){const a=i*Math.PI*2/7;ellipse(-3+Math.cos(a)*47,-15+Math.sin(a)*32,3,2,'rgba(224,237,190,.55)')}
+ ctx.restore();
+}
+function draw(t){
+ const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,evening?'#9bb5b0':'#d9eee2');bg.addColorStop(.55,evening?'#789e9a':'#b9dfd1');bg.addColorStop(1,evening?'#668d86':'#a5cfb9');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ // distant soft sun glow
+ const glow=ctx.createRadialGradient(W*.76,H*.22,4,W*.76,H*.22,H*.48);glow.addColorStop(0,evening?'rgba(255,205,145,.28)':'rgba(255,248,205,.52)');glow.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+ // aquarium floor
+ ctx.fillStyle=evening?'#b0a887':'#d5cda9';ctx.beginPath();ctx.moveTo(0,H*.76);ctx.quadraticCurveTo(W*.5,H*.69,W,H*.76);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ // soft stones
+ for(let i=0;i<28;i++){const x=(i*97%Math.max(W,1)),y=H*.83+(i%4)*H*.035;ellipse(x,y,8+(i%5)*3,4+(i%3)*2,i%2?'#c2b994':'#b1b18d')}
+ // plants
+ plant(W*.12,H*.81,.8,t);plant(W*.85,H*.79,.95,t+1);plant(W*.25,H*.84,.48,t+2);
+ // driftwood
+ line([[W*.65,H*.82],[W*.59,H*.73],[W*.56,H*.69]],'#927e5e',12);
+ // floating plants and bubbles
+ for(let i=0;i<7;i++){const x=(i*139+Math.sin(t*.3+i)*13)%W,y=H*.35+Math.sin(t*.7+i)*H*.17;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,3+(i%3)*2,0,Math.PI*2);ctx.stroke()}
+ // water shimmer
+ for(let i=0;i<9;i++){const x=(i*113+t*8)%W,y=H*.23+(i%4)*H*.13;ctx.strokeStyle=evening?'rgba(238,231,194,.12)':'rgba(255,255,255,.22)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,22+(i%3)*8,4,0,0,Math.PI*2);ctx.stroke()}
+ drawTurtle(t);
+ // gentle vignette
+ const v=ctx.createRadialGradient(W/2,H/2,H*.18,W/2,H/2,H*.8);v.addColorStop(0,'rgba(255,255,255,0)');v.addColorStop(1,'rgba(39,81,64,.10)');ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+}
+let start=performance.now();function frame(now){requestAnimationFrame(frame);const t=(now-start)/1000;if(!paused)draw(t);else if(!canvas.dataset.still){draw(t);canvas.dataset.still='1'}else return;if(!paused)delete canvas.dataset.still}
+requestAnimationFrame(frame);
+canvas.addEventListener('pointerdown',e=>{touchX=e.clientX;canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(touchX!==null){angle=Math.max(-1.3,Math.min(1.3,angle+(e.clientX-touchX)/W));touchX=e.clientX}});
+canvas.addEventListener('pointerup',e=>{if(touchX!==null&&Math.abs(e.clientX-touchX)<8){look=1;mood.textContent='みどりが、こちらに気づいたみたい。'}touchX=null});
+document.getElementById('camera').onclick=()=>{angle=0;zoom=1};
+document.getElementById('pause').onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?'▶　うごきだす':'Ⅱ　ひと休み';mood.textContent=paused?'水の中で、のんびり休憩中。':'水草のそばで、ぷかぷか。';if(!paused)delete canvas.dataset.still};
+document.getElementById('light').onclick=()=>{evening=!evening;mood.textContent=evening?'夕暮れの水辺で、ゆったり。':'水草のそばで、ぷかぷか。'};
+})();
+</script></body></html>
