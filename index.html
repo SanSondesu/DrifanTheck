@@ -1,90 +1,3663 @@
-<!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#dcefe4"><title>こもれび水槽</title>
-<style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;color:#31594b;background:#dcefe4}canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
-.panel{position:fixed;z-index:2;background:rgba(250,255,245,.84);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 28px rgba(57,100,78,.09);backdrop-filter:blur(12px);border-radius:23px}
-header{top:15px;left:15px;padding:13px 18px;max-width:calc(100% - 30px)}h1{font-size:19px;margin:0 0 3px;letter-spacing:.06em}header p{font-size:11px;color:#769084;margin:0}
-#hint{position:fixed;right:15px;top:92px;z-index:2;padding:8px 12px;border-radius:16px;background:#f7fff0bd;color:#789084;font-size:10px}
-#info{left:15px;bottom:15px;width:min(290px,calc(100% - 30px));padding:13px 16px}#name{font-size:17px;font-weight:800}#mood{font-size:12px;color:#6c897b;margin-top:3px}#tip{font-size:10px;color:#8aa094;margin-top:8px;line-height:1.5}
-.controls{position:fixed;right:15px;bottom:15px;z-index:3;display:flex;flex-direction:column;gap:8px}button{border:1px solid #fff;background:rgba(250,255,245,.9);color:#426b59;border-radius:17px;padding:11px 14px;font:600 12px system-ui;box-shadow:0 5px 18px #31594b14;backdrop-filter:blur(10px)}button:active{transform:scale(.97)}
-@media(max-width:520px){header{top:10px;left:10px}#hint{top:83px;right:10px}#info{left:10px;bottom:10px;width:calc(100% - 20px);max-width:260px}.controls{right:10px;bottom:10px}button{padding:10px 11px;font-size:11px}}
-</style></head><body>
-<canvas id="pond"></canvas>
-<header class="panel"><h1>こもれび水槽</h1><p>小さな水辺で、のんびり暮らすカメを眺めよう。</p></header>
-<div id="hint">画面をなぞって、水槽を見渡そう</div>
-<section id="info" class="panel"><div id="name">みどり</div><div id="mood">水草のそばで、ぷかぷか。</div><div id="tip">カメをタップすると、こちらに気づくよ。</div></section>
-<div class="controls"><button id="camera">⟳　視点をリセット</button><button id="pause">Ⅱ　ひと休み</button><button id="light">☼　昼 / 夕方</button></div>
-<script>
-(()=> {
-const canvas=document.getElementById('pond'),ctx=canvas.getContext('2d');
-let W=0,H=0,dpr=1,paused=false,evening=false,angle=0,zoom=1,look=0,touchX=null,lastPinch=0;
-const mood=document.getElementById('mood');
-function resize(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
-addEventListener('resize',resize);resize();
-function rr(x,y,w,h,r,fill){ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
-function ellipse(x,y,rx,ry,fill,rot=0){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle=fill;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.restore()}
-function line(points,color,width){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()}
-function plant(x,y,s,t){ctx.save();ctx.translate(x,y);ctx.scale(s,s);for(let i=0;i<5;i++){const a=-1.1+i*.48+Math.sin(t*.6+i)*.07;ctx.save();ctx.rotate(a);line([[0,0],[0,-65]],'#548e70',3);ellipse(0,-37,9,24,'#78b58b',-.18);ellipse(0,-55,7,18,'#9bc99b',.12);ctx.restore()}ctx.restore()}
-function drawTurtle(t){
- const cx=W*.51+Math.sin(t*.28)*W*.045+angle*35,cy=H*.53+Math.sin(t*1.3)*7;
- const scale=Math.min(W/390,H/700)*zoom*1.08;
- ctx.save();ctx.translate(cx,cy);ctx.scale(scale,scale);
- // soft shadow
- ellipse(0,68,112,18,'rgba(49,91,72,.12)');
- // rear flippers
- ellipse(-62,36,36,17,'#83b88c',-.55+Math.sin(t*2)*.12);ellipse(58,36,36,17,'#83b88c',.55-Math.sin(t*2)*.12);
- // body
- ellipse(0,18,77,43,'#a4c99a');
- // front flippers
- ellipse(-62,-3,38,19,'#8fbe91',-.5+Math.sin(t*2.1)*.1);ellipse(61,-2,38,19,'#8fbe91',.5-Math.sin(t*2.1)*.1);
- // shell shadow and shell
- ellipse(-3,-8,83,60,'#547d5b');ellipse(-3,-13,79,57,'#789c68');
- // shell center panels
- ellipse(-3,-18,58,42,'#8eaf78');
- line([[-3,-67],[-3,-48],[-3,-15],[-3,25]],'#648b5e',2);
- line([[-69,-25],[-43,-27],[-3,-18],[38,-27],[65,-22]],'#648b5e',2);
- // shell subtle highlights
- ellipse(-28,-39,23,8,'rgba(225,239,190,.28)',-.25);
- // neck/head
- line([[58,-13],[82,-24],[97,-22]],'#8fbd8c',23);
- ellipse(104,-27,31,25,'#9bc995');
- // cheeks and eyes
- ellipse(119,-16,7,5,'#e9a6a0');ellipse(112,-37,4,5,'#365b49');ellipse(113,-39,1.5,1.8,'#fff');
- // smile
- ctx.strokeStyle='#547b5c';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(121,-24,7,.2,1.35);ctx.stroke();
- // tiny nostril
- ellipse(130,-30,1.6,1.4,'#547b5c');
- // gentle shell speckles
- for(let i=0;i<7;i++){const a=i*Math.PI*2/7;ellipse(-3+Math.cos(a)*47,-15+Math.sin(a)*32,3,2,'rgba(224,237,190,.55)')}
- ctx.restore();
-}
-function draw(t){
- const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,evening?'#9bb5b0':'#d9eee2');bg.addColorStop(.55,evening?'#789e9a':'#b9dfd1');bg.addColorStop(1,evening?'#668d86':'#a5cfb9');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
- // distant soft sun glow
- const glow=ctx.createRadialGradient(W*.76,H*.22,4,W*.76,H*.22,H*.48);glow.addColorStop(0,evening?'rgba(255,205,145,.28)':'rgba(255,248,205,.52)');glow.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
- // aquarium floor
- ctx.fillStyle=evening?'#b0a887':'#d5cda9';ctx.beginPath();ctx.moveTo(0,H*.76);ctx.quadraticCurveTo(W*.5,H*.69,W,H*.76);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
- // soft stones
- for(let i=0;i<28;i++){const x=(i*97%Math.max(W,1)),y=H*.83+(i%4)*H*.035;ellipse(x,y,8+(i%5)*3,4+(i%3)*2,i%2?'#c2b994':'#b1b18d')}
- // plants
- plant(W*.12,H*.81,.8,t);plant(W*.85,H*.79,.95,t+1);plant(W*.25,H*.84,.48,t+2);
- // driftwood
- line([[W*.65,H*.82],[W*.59,H*.73],[W*.56,H*.69]],'#927e5e',12);
- // floating plants and bubbles
- for(let i=0;i<7;i++){const x=(i*139+Math.sin(t*.3+i)*13)%W,y=H*.35+Math.sin(t*.7+i)*H*.17;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,3+(i%3)*2,0,Math.PI*2);ctx.stroke()}
- // water shimmer
- for(let i=0;i<9;i++){const x=(i*113+t*8)%W,y=H*.23+(i%4)*H*.13;ctx.strokeStyle=evening?'rgba(238,231,194,.12)':'rgba(255,255,255,.22)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,22+(i%3)*8,4,0,0,Math.PI*2);ctx.stroke()}
- drawTurtle(t);
- // gentle vignette
- const v=ctx.createRadialGradient(W/2,H/2,H*.18,W/2,H/2,H*.8);v.addColorStop(0,'rgba(255,255,255,0)');v.addColorStop(1,'rgba(39,81,64,.10)');ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
-}
-let start=performance.now();function frame(now){requestAnimationFrame(frame);const t=(now-start)/1000;if(!paused)draw(t);else if(!canvas.dataset.still){draw(t);canvas.dataset.still='1'}else return;if(!paused)delete canvas.dataset.still}
-requestAnimationFrame(frame);
-canvas.addEventListener('pointerdown',e=>{touchX=e.clientX;canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener('pointermove',e=>{if(touchX!==null){angle=Math.max(-1.3,Math.min(1.3,angle+(e.clientX-touchX)/W));touchX=e.clientX}});
-canvas.addEventListener('pointerup',e=>{if(touchX!==null&&Math.abs(e.clientX-touchX)<8){look=1;mood.textContent='みどりが、こちらに気づいたみたい。'}touchX=null});
-document.getElementById('camera').onclick=()=>{angle=0;zoom=1};
-document.getElementById('pause').onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?'▶　うごきだす':'Ⅱ　ひと休み';mood.textContent=paused?'水の中で、のんびり休憩中。':'水草のそばで、ぷかぷか。';if(!paused)delete canvas.dataset.still};
-document.getElementById('light').onclick=()=>{evening=!evening;mood.textContent=evening?'夕暮れの水辺で、ゆったり。':'水草のそばで、ぷかぷか。'};
-})();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrifanTheck</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Klee+One&family=Montserrat:wght@300&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Water.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.9);
+            background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 80%, rgba(0,0,0,0) 100%);
+            padding: 20px 40px;
+            border-radius: 20px;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 300px;
+            backdrop-filter: blur(4px);
+            transition: opacity 1.5s ease-in-out, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #ui-container.collapsed {
+            transform: translate(-50%, calc(100% - 36px));
+        }
+
+        #ui-toggle-btn {
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 40, 55, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            backdrop-filter: blur(4px);
+            transition: background 0.3s, transform 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        #ui-toggle-btn:hover {
+            background: rgba(50, 70, 95, 0.9);
+        }
+        #ui-container.collapsed #ui-toggle-btn {
+            transform: translateX(-50%) rotate(180deg);
+        }
+
+        .ui-main-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            transition: opacity 0.3s;
+        }
+        
+        #ui-container.collapsed .ui-main-row,
+        #ui-container.collapsed #instruction {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (max-width: 600px) {
+            #ui-container {
+                bottom: 15px;
+                padding: 15px 20px 12px;
+                min-width: 260px;
+                width: 85%;
+                max-width: 340px;
+            }
+            .ui-main-row {
+                gap: 18px;
+            }
+            #circular-slider {
+                width: 80px;
+                height: 80px;
+            }
+            #slider-thumb {
+                width: 18px;
+                height: 18px;
+            }
+            .time-label {
+                font-size: 0.65rem;
+            }
+            .time-label.top { top: -16px; }
+            .time-label.bottom { bottom: -16px; }
+            .time-label.left { left: -18px; }
+            .time-label.right { right: -18px; }
+            h1 {
+                font-size: 1.1rem;
+                letter-spacing: 2px;
+            }
+            #time-display {
+                font-size: 1.05rem;
+            }
+            #write-btn {
+                top: 15px;
+                right: 15px;
+                padding: 8px 14px;
+                font-size: 0.8rem;
+            }
+            #notebook-btn {
+                top: 60px !important;
+                right: 15px !important;
+                padding: 8px 14px;
+                font-size: 0.8rem;
+            }
+            #notebook-container {
+                padding: 20px 20px !important;
+                width: 90% !important;
+            }
+        }
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            letter-spacing: 2px;
+        }
+        .bottle-count-num {
+            text-combine-upright: all;
+            display: inline-block;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            pointer-events: none;
+        }
+        
+        #circular-slider {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            position: relative;
+            margin: 10px auto;
+            touch-action: none; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.2);
+        }
+        #slider-thumb {
+            width: 22px;
+            height: 22px;
+            background: #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 0 12px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.5);
+        }
+        #time-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            pointer-events: none;
+        }
+        .time-label {
+            position: absolute;
+            font-size: 0.7rem;
+            opacity: 0.7;
+            pointer-events: none;
+            font-weight: bold;
+        }
+        .time-label.top { top: -20px; left: 50%; transform: translateX(-50%); }
+        .time-label.bottom { bottom: -20px; left: 50%; transform: translateX(-50%); }
+        .time-label.left { top: 50%; left: -25px; transform: translateY(-50%); }
+        .time-label.right { top: 50%; right: -25px; transform: translateY(-50%); }
+        
+        #instruction {
+            margin-top: 12px;
+            font-size: 0.75rem;
+            opacity: 0.6;
+            pointer-events: none;
+            transition: opacity 1s ease-out;
+        }
+        
+        /* 共通の紙のようなテクスチャとスタイル */
+        .paper-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fdfbf5;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.07'/%3E%3C/svg%3E");
+            border-radius: 4px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), inset 0 0 50px rgba(160, 140, 110, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        #message-container {
+            padding: 45px 40px;
+            align-items: center;
+            min-width: 320px;
+            max-width: 80%;
+        }
+        
+        #message-text {
+            font-family: 'Klee One', cursive; 
+            font-size: 1.45rem;
+            line-height: 2.3;
+            text-align: center;
+            margin-bottom: 35px;
+            white-space: pre-wrap;
+            letter-spacing: 0.1em;
+            color: #2c2825; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.03);
+        }
+        
+        #close-msg-btn, #close-notebook-btn {
+            background: #62727b; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            align-self: center;
+        }
+        #close-msg-btn:hover, #close-notebook-btn:hover {
+            background: #4c5a61;
+        }
+        
+        .btn {
+            background: #4a6fa5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #37537d;
+        }
+        
+        #write-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            pointer-events: auto;
+            transition: all 0.4s ease;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3), inset 0 0 10px rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            font-family: 'Klee One', cursive;
+            letter-spacing: 2px;
+            padding: 10px 22px;
+            border-radius: 25px;
+        }
+        #write-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 0 15px rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        #notebook-btn {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            z-index: 50;
+            pointer-events: auto;
+            transition: all 0.4s ease;
+            background: linear-gradient(135deg, #4a2f1d 0%, #2e1b0f 100%);
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 0 8px rgba(212, 175, 55, 0.15);
+            font-family: 'Klee One', cursive;
+            letter-spacing: 2px;
+            padding: 10px 22px;
+            border-radius: 4px;
+        }
+        #notebook-btn:hover {
+            background: linear-gradient(135deg, #5c3b24 0%, #3e2414 100%);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6), inset 0 0 15px rgba(212, 175, 55, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .hidden-ui {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        
+        #compose-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: #ffffff;
+            padding: 35px 30px;
+            border-radius: 20px 20px 45px 45px; /* ボトルの底のような丸み */
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.2);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 360px;
+            z-index: 100;
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-top: 1px solid rgba(255, 255, 255, 0.7); /* ガラスのハイライト */
+        }
+        #compose-container h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-family: 'Klee One', cursive;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+        }
+        #compose-textarea {
+            width: 100%;
+            height: 130px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.15);
+            color: #fff;
+            resize: none;
+            font-family: 'Klee One', cursive;
+            font-size: 1.1rem;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+        }
+        #compose-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        #compose-textarea:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(0, 0, 0, 0.25);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+        }
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            justify-content: center;
+        }
+        /* コルク風の送信ボタン */
+        #send-btn {
+            background: linear-gradient(to bottom, #9c683f, #6e4424) !important;
+            border: 1px solid #b88a62;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fdfbf5;
+            font-family: 'Klee One', cursive;
+            letter-spacing: 1px;
+            padding: 10px 25px;
+        }
+        #send-btn:hover {
+            background: linear-gradient(to bottom, #ad7649, #7d4d29) !important;
+        }
+        #cancel-btn {
+            background: rgba(255,255,255,0.1) !important;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            font-family: 'Klee One', cursive;
+            letter-spacing: 1px;
+            padding: 10px 20px;
+        }
+        #cancel-btn:hover {
+            background: rgba(255,255,255,0.2) !important;
+        }
+
+        /* 記憶のノートUI */
+        #notebook-container {
+            padding: 40px 50px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            color: #e0d8c8;
+            background-color: #3a2318;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            border: 1px solid #5a3d24;
+            border-radius: 6px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9), inset 0 0 50px rgba(30, 15, 10, 0.8);
+        }
+        .notebook-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #d4af37;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .notebook-header::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: rgba(212, 175, 55, 0.3);
+        }
+        .notebook-header h2 {
+            margin: 0;
+            font-family: 'Montserrat', 'Klee One', sans-serif;
+            font-size: 1.8rem;
+            color: #d4af37;
+            font-weight: 300;
+            letter-spacing: 3px;
+        }
+        #close-notebook-btn {
+            background: transparent;
+            color: #d4af37;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            transition: all 0.3s;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 1px;
+            padding: 6px 16px;
+            box-shadow: none;
+            align-self: center;
+        }
+        #close-notebook-btn:hover {
+            background: rgba(212, 175, 55, 0.1);
+            border-color: #d4af37;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+        }
+        
+        .notebook-body {
+            display: flex;
+            flex-direction: row;
+            gap: 25px;
+            flex: 1;
+            min-height: 0;
+        }
+        .notebook-sidebar {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Klee One', cursive;
+            padding-right: 15px;
+        }
+        .notebook-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .notebook-sidebar::-webkit-scrollbar-thumb {
+            background: rgba(212, 175, 55, 0.6);
+            border-radius: 2px;
+        }
+        .notebook-sidebar h3 {
+            font-size: 1.15rem;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #a89c8a;
+            border-bottom: 1px dashed rgba(212, 175, 55, 0.3);
+            padding-bottom: 5px;
+            letter-spacing: 2px;
+        }
+        .notebook-sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .notebook-sidebar li {
+            background: rgba(40, 20, 10, 0.4);
+            margin-bottom: 12px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            border-left: 2px solid #5a7b8c;
+            font-size: 1rem;
+            line-height: 1.8;
+            box-shadow: inset 0 0 10px rgba(20, 10, 5, 0.8);
+            white-space: pre-wrap;
+            color: #e0d8c8;
+        }
+        .item-li {
+            border-left-color: #d4af37 !important;
+            font-size: 0.95rem !important;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .item-li:hover {
+            background: rgba(212, 175, 55, 0.1) !important;
+            transform: translateX(4px);
+        }
+
+        #preview-area {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: 
+                radial-gradient(circle at center, transparent 30%, rgba(139, 115, 85, 0.3) 100%),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E"),
+                #eaddc5;
+            border-radius: 8px;
+            border: 1px solid rgba(139, 115, 85, 0.5);
+            position: relative;
+            min-width: 250px;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(90, 60, 30, 0.3), inset 0 5px 15px rgba(0,0,0,0.15);
+        }
+        #preview-canvas {
+            width: 100%;
+            height: 100%;
+            display: none;
+            cursor: grab;
+            touch-action: none;
+        }
+        #preview-canvas:active {
+            cursor: grabbing;
+        }
+        #preview-text {
+            position: absolute;
+            bottom: 15px;
+            font-size: 0.85rem;
+            color: #5a4b3c;
+            font-family: 'Klee One', cursive;
+            letter-spacing: 1px;
+            pointer-events: none;
+            display: none;
+            text-shadow: none;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+        
+        @media (max-width: 600px) {
+            #notebook-container {
+                height: 85vh;
+                padding: 20px 25px !important;
+                flex-direction: column;
+                display: none;
+            }
+            .notebook-body {
+                flex-direction: column;
+            }
+            #preview-area {
+                flex: none;
+                height: 250px;
+                min-height: 250px;
+                width: 100%;
+            }
+        }
+        
+        #dial-picker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 15, 25, 0.95);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 12px;
+            padding: 12px 6px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,255,255,0.05);
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+        }
+        .dial-wheel-container {
+            height: 130px;
+            width: 42px;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            position: relative;
+            margin-bottom: 10px;
+            cursor: ns-resize;
+            mask-image: linear-gradient(to bottom, transparent, black 35%, black 65%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 35%, black 65%, transparent);
+        }
+        .dial-wheel-container::-webkit-scrollbar {
+            display: none;
+        }
+        #dial-wheel {
+            list-style: none;
+            margin: 0;
+            padding: 52px 0;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #dial-wheel li {
+            height: 26px;
+            line-height: 26px;
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.3);
+            scroll-snap-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-variant-numeric: tabular-nums;
+        }
+        .dial-selector {
+            position: absolute;
+            top: 52px;
+            left: 0;
+            width: 100%;
+            height: 26px;
+            border-top: 1px solid rgba(255,255,255,0.6);
+            border-bottom: 1px solid rgba(255,255,255,0.6);
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+        }
+        
+        #time-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+        .time-part {
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .time-part:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .time-part:active {
+            transform: scale(0.9);
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 15, 25, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1.5s ease-in-out;
+        }
+        .logo-wrapper {
+            text-align: center;
+            margin-bottom: 50px;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #start-btn {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.6);
+            padding: 12px 40px;
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Klee One', cursive;
+        }
+        #start-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: white;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <div class="logo-wrapper">
+            <svg width="120" height="120" viewBox="0 0 100 100" style="margin-bottom: 20px;">
+                <defs>
+                    <clipPath id="circle-clip">
+                        <circle cx="50" cy="50" r="48" />
+                    </clipPath>
+                </defs>
+                <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" />
+                <g clip-path="url(#circle-clip)">
+                    <path d="M50 18 L28 75 L72 75 Z" fill="#62727b" />
+                    <path d="M50 18 L72 75 L58 79 L42 79 Z" fill="#455a64" />
+                    <path d="M -10 62 Q 25 50 50 62 T 110 62 L 110 100 L -10 100 Z" fill="rgba(30, 50, 75, 0.8)" />
+                    <path d="M -10 72 Q 25 84 50 72 T 110 72 L 110 100 L -10 100 Z" fill="rgba(40, 70, 95, 0.9)" />
+                    <path d="M -10 84 Q 25 74 50 84 T 110 84 L 110 100 L -10 100 Z" fill="rgba(50, 85, 115, 0.95)" />
+                    <path d="M -10 62 Q 25 50 50 62 T 110 62" fill="none" stroke="#90caf9" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M -10 72 Q 25 84 50 72 T 110 72" fill="none" stroke="#64b5f6" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M -10 84 Q 25 74 50 84 T 110 84" fill="none" stroke="#80d8ff" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+                </g>
+            </svg>
+            <div style="font-size: 2.8rem; letter-spacing: 6px; font-weight: 300; font-family: 'Montserrat', sans-serif; color: rgba(255,255,255,0.95);">DrifanTheck</div>
+            <div style="font-size: 1rem; letter-spacing: 3px; font-family: 'Klee One', cursive; margin-top: 8px; color: rgba(255,255,255,0.6);">Drifting and the rock</div>
+        </div>
+        <button id="start-btn">はじめる</button>
+    </div>
+
+    <button id="write-btn" class="btn">メッセージを流す</button>
+    <button id="notebook-btn" class="btn">記憶のノート</button>
+
+    <div id="ui-container">
+        <button id="ui-toggle-btn" title="UIの折りたたみ">▼</button>
+        <div class="ui-main-row">
+            <div id="bottle-counter" class="vertical-text" style="font-size: 1.2rem; font-weight: bold; transition: text-shadow 0.5s;">
+                🍾 <span class="bottle-count-num">0</span>
+            </div>
+            
+            <div style="position: relative; margin: 15px 0;">
+                <div class="time-label top">昼</div>
+                <div class="time-label bottom">深夜</div>
+                <div class="time-label left">朝</div>
+                <div class="time-label right">夕</div>
+                <div id="circular-slider">
+                    <div id="slider-thumb"></div>
+                    <div id="time-display"><span id="hour-text" class="time-part">17</span>:<span id="minute-text" class="time-part">30</span></div>
+                </div>
+            </div>
+
+            <div class="vertical-text">
+                <h1>時間のうつろい</h1>
+            </div>
+        </div>
+        <div id="instruction">ドラッグで視点移動 / スクロールでズーム / ボトルをクリックで読む</div>
+    </div>
+
+    <div id="message-container" class="paper-modal">
+        <div id="message-text"></div>
+        <button id="close-msg-btn" class="btn">海に戻す</button>
+    </div>
+
+    <div id="notebook-container" class="paper-modal">
+        <div class="notebook-header">
+            <h2>海辺の記憶</h2>
+            <button id="close-notebook-btn" class="btn">閉じる</button>
+        </div>
+        <div class="notebook-body">
+            <div class="notebook-sidebar">
+                <h3>拾った言葉たち</h3>
+                <ul id="notebook-messages">
+                    <li>まだメッセージを拾っていません。</li>
+                </ul>
+                
+                <h3>出会った漂流物</h3>
+                <ul id="notebook-items">
+                    <li class="item-li" style="cursor:default;">特別な漂流物にはまだ触れていません。</li>
+                </ul>
+            </div>
+            <div id="preview-area">
+                <canvas id="preview-canvas"></canvas>
+                <div id="preview-text">スワイプで回転・ズーム</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="compose-container">
+        <h2>メッセージを書く</h2>
+        <textarea id="compose-textarea" placeholder="誰かに届くかもしれない言葉..."></textarea>
+        <div class="btn-group">
+            <button id="send-btn" class="btn">海に流す</button>
+            <button id="cancel-btn" class="btn">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="dial-picker" style="display: none;">
+        <div class="dial-wheel-container">
+            <ul id="dial-wheel"></ul>
+            <div class="dial-selector"></div>
+        </div>
+        <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5);">タップして決定</div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, water, sky;
+        let sun, sunMesh, moon, moonMesh;
+        let directionalLight, ambientLight;
+        let rock, stars;
+        let bioluminescence;
+        let controls;
+        let pmremGenerator;
+        let floaters = [];
+        let currentProgress = 0;
+
+        let shootingStar;
+        let lastShootingStarTime = 0;
+        let isShootingStarActive = false;
+        let shootingStarStartTime = 0;
+        let shootingStarStartPos = new THREE.Vector3();
+        let shootingStarDir = new THREE.Vector3();
+        const SHOOTING_STAR_DURATION = 0.55; 
+        let nextShootingStarInterval = 15000;
+        
+        let readBottlesCount = 0;
+        
+        // --- 記録ノート用データ ---
+        let readMessagesList = [];
+        let touchedItemsSet = new Set();
+        
+        let ripples = [];
+        
+        let whaleGroup;
+        let isWhaleActive = false;
+        let whaleStartTime = 0;
+        const WHALE_DURATION = 16.0; 
+        let lastWhaleTime = 0;
+        let nextWhaleInterval = 20000; // 初回は約20秒後に発生
+        let whaleParticles = [];
+        
+        let birdsGroup;
+        let targetBirdOpacity = 0;
+        let currentBirdOpacity = 0;
+
+        let watchSoundInterval;
+
+        let currentHours = 12;
+        let currentMinutes = 0;
+        let isHourMode = true;
+        
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let pointerDownPos = new THREE.Vector2();
+        
+        // --- プレビュー機能用変数 ---
+        let previewScene, previewCamera, previewRenderer, previewModel;
+        let previewReqId;
+        let previewIsDragging = false;
+        let previewPrevMouse = {x: 0, y: 0};
+        let previewPinchDist = 0;
+        
+        const PRESET_MESSAGES = [
+            "君の今日が良い一日でありますように。",
+            "遠い海から、名もなき旅人より。",
+            "時には立ち止まって、星を見るのも悪くないよ。",
+            "明日は明日の風が吹く。",
+            "この広い海で、このメッセージを見つけてくれてありがとう。",
+            "大丈夫、きっと上手くいくさ。",
+            "静けさの中で、本当の自分の声が聞こえるかもしれない。",
+            "どこかで誰かが、あなたの幸せを祈っています。",
+            "波の音に耳をすませば、心のざわめきも消えていく。",
+            "今日という日は、二度と来ない贈り物。"
+        ];
+
+        const SUNSET_COLOR = new THREE.Color(0xff6600);
+        const DAY_LIGHT_COLOR = new THREE.Color(0xfff0dd); 
+        const MOONLIGHT_COLOR = new THREE.Color(0xafd5ff);
+        const WATER_BASE_DAY = new THREE.Color(0x003554); 
+        const WATER_BASE_SUNSET = new THREE.Color(0x1a0f05);
+        const WATER_BASE_NIGHT = new THREE.Color(0x08182b); 
+
+        let particles = [];
+        let particleTexture;
+        let particleGeo; 
+
+        let audioCtx;
+        let noiseNode;
+        let biquadFilter;
+        let gainNode;
+
+        let uiTimeout;
+        const UI_HIDE_DELAY = 4000;
+
+        window.onload = function () {
+            init();
+            animate();
+            initAudio();
+            
+            const startScreen = document.getElementById('start-screen');
+            const startBtn = document.getElementById('start-btn');
+            
+            if (startBtn && startScreen) {
+                startBtn.addEventListener('click', () => {
+                    const logoWrapper = document.querySelector('.logo-wrapper');
+                    if(logoWrapper) logoWrapper.style.opacity = '0';
+                    
+                    startBtn.style.opacity = '0';
+                    startBtn.style.pointerEvents = 'none';
+
+                    setTimeout(() => {
+                        startScreen.style.opacity = '0';
+                    }, 500);
+
+                    initAudio(); 
+                    resetUITimer();
+                    
+                    setTimeout(() => {
+                        startScreen.style.display = 'none';
+                    }, 2000);
+                });
+            }
+        };
+
+        function resetUITimer() {
+            const uiContainer = document.getElementById('ui-container');
+            const writeBtn = document.getElementById('write-btn');
+            const notebookBtn = document.getElementById('notebook-btn');
+            
+            if (uiContainer) uiContainer.classList.remove('hidden-ui');
+            if (writeBtn) writeBtn.classList.remove('hidden-ui');
+            if (notebookBtn) notebookBtn.classList.remove('hidden-ui');
+            
+            clearTimeout(uiTimeout);
+            uiTimeout = setTimeout(() => {
+                const msgContainer = document.getElementById('message-container');
+                const compContainer = document.getElementById('compose-container');
+                const nbContainer = document.getElementById('notebook-container');
+                
+                if ((!msgContainer || msgContainer.style.display !== 'flex') &&
+                    (!compContainer || compContainer.style.display !== 'flex') &&
+                    (!nbContainer || nbContainer.style.display !== 'flex')) {
+                    if (uiContainer) uiContainer.classList.add('hidden-ui');
+                    if (writeBtn) writeBtn.classList.add('hidden-ui');
+                    if (notebookBtn) notebookBtn.classList.add('hidden-ui');
+                }
+            }, UI_HIDE_DELAY);
+        }
+
+        async function initAudio() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return; 
+                
+                if (!audioCtx) {
+                    audioCtx = new AudioContext();
+                    const bufferSize = audioCtx.sampleRate * 2; 
+                    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    
+                    let lastOut = 0;
+                    for (let i = 0; i < bufferSize; i++) {
+                        const white = Math.random() * 2 - 1;
+                        output[i] = (lastOut + (0.02 * white)) / 1.02;
+                        lastOut = output[i];
+                        output[i] *= 3.5; 
+                    }
+                    
+                    noiseNode = audioCtx.createBufferSource();
+                    noiseNode.buffer = noiseBuffer;
+                    noiseNode.loop = true;
+                    
+                    biquadFilter = audioCtx.createBiquadFilter();
+                    biquadFilter.type = "lowpass";
+                    biquadFilter.frequency.value = 400; 
+                    
+                    gainNode = audioCtx.createGain();
+                    gainNode.gain.value = 0; 
+                    
+                    noiseNode.connect(biquadFilter);
+                    biquadFilter.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    noiseNode.start();
+                    
+                    playWaveSound();
+                    scheduleNextWave();
+                }
+
+                if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                    await audioCtx.resume();
+                }
+                
+                const instruction = document.getElementById('instruction');
+                if (instruction && instruction.style.opacity !== '0') {
+                    instruction.style.opacity = '0';
+                    setTimeout(() => { instruction.style.display = 'none'; }, 1000);
+                }
+            } catch(e) {
+                console.error("Audio init failed", e);
+            }
+        }
+
+        function scheduleNextWave() {
+            if(!audioCtx) return;
+            const interval = 6600 + Math.random() * 1000; 
+            setTimeout(() => {
+                playWaveSound();
+                scheduleNextWave();
+            }, interval);
+        }
+
+        function playChimeSound() {
+            if(!audioCtx) return;
+            if(audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                audioCtx.resume().catch(e => console.log("Audio resume prevented:", e));
+            }
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000 + Math.random() * 500, now);
+            
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 3.0); 
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 3.0);
+        }
+
+        function playWhaleSound() {
+            if(!audioCtx || audioCtx.state !== 'running') return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(120, now); 
+            osc.frequency.exponentialRampToValueAtTime(60, now + 5.0);
+            
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + 2.0); 
+            gain.gain.linearRampToValueAtTime(0.3, now + 4.0);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 7.0); 
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 7.0);
+        }
+
+        function playWatchSoundAndShowTime() {
+            if(!audioCtx) return;
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            showMessage("古い時計の針が、静かに時を刻んでいる。\n\n[ " + timeStr + " ]");
+
+            let count = 0;
+            const tick = () => {
+                if(count >= 12 || audioCtx.state !== 'running') {
+                    clearInterval(watchSoundInterval);
+                    return;
+                }
+                const t = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(count % 2 === 0 ? 900 : 1200, t);
+                
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1500, t);
+                
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.05, t + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(t);
+                osc.stop(t + 0.1);
+                count++;
+            };
+            
+            clearInterval(watchSoundInterval);
+            tick();
+            watchSoundInterval = setInterval(tick, 1000);
+        }
+
+        function playRecordSound() {
+            if(!audioCtx || audioCtx.state !== 'running') return;
+            const now = audioCtx.currentTime;
+            
+            showMessage("古いレコード盤から、\n波の音に混じってノスタルジックなメロディが聴こえる…");
+
+            const noiseOsc = audioCtx.createOscillator();
+            noiseOsc.type = 'sawtooth';
+            noiseOsc.frequency.setValueAtTime(50, now);
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.setValueAtTime(6000, now);
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.01, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 8.0);
+            
+            noiseOsc.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noiseOsc.start(now);
+            noiseOsc.stop(now + 8.0);
+
+            const notes = [329.63, 392.00, 440.00, 523.25, 659.25, 587.33, 440.00, 392.00]; 
+            let startTime = now;
+            
+            for(let i = 0; i < notes.length; i++) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(notes[i], startTime);
+                
+                const lfo = audioCtx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.setValueAtTime(2.5, startTime);
+                const lfoGain = audioCtx.createGain();
+                lfoGain.gain.setValueAtTime(6, startTime); 
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.frequency);
+                lfo.start(startTime);
+                lfo.stop(startTime + 1.5);
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(600, startTime);
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.08, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.5);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(startTime);
+                osc.stop(startTime + 1.5);
+                
+                startTime += 0.8 + Math.random() * 0.2; 
+            }
+        }
+
+        function playGlassSound() {
+            if(!audioCtx || audioCtx.state !== 'running') return;
+            const now = audioCtx.currentTime;
+            
+            showMessage("波に揺られて、\nガラスの浮き玉が「カラン…」と涼しげな音を立てた。");
+
+            const freqs = [2200, 2600]; 
+            let startTime = now;
+            
+            freqs.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq + (Math.random()*50), startTime + i*0.06);
+                
+                gain.gain.setValueAtTime(0, startTime + i*0.06);
+                gain.gain.linearRampToValueAtTime(0.12, startTime + i*0.06 + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + i*0.06 + 0.6);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(startTime + i*0.06);
+                osc.stop(startTime + i*0.06 + 0.6);
+            });
+        }
+
+        async function playWaveSound() {
+            if(!audioCtx) return;
+            if(audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                try {
+                   await audioCtx.resume();
+                } catch(e) {
+                   console.log("Audio resume prevented:", e);
+                }
+            }
+            const now = audioCtx.currentTime;
+            
+            gainNode.gain.cancelScheduledValues(now);
+            biquadFilter.frequency.cancelScheduledValues(now);
+            
+            gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+            biquadFilter.frequency.setValueAtTime(biquadFilter.frequency.value, now);
+            
+            gainNode.gain.linearRampToValueAtTime(0.035 + Math.random() * 0.02, now + 1.5);
+            biquadFilter.frequency.linearRampToValueAtTime(600 + Math.random() * 200, now + 1.5);
+            
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 4.5);
+            biquadFilter.frequency.exponentialRampToValueAtTime(200, now + 4.5);
+            gainNode.gain.setValueAtTime(0, now + 4.6);
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
+            camera.position.set(0, 5, 16);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 0.6; 
+            document.body.appendChild(renderer.domElement);
+
+            pmremGenerator = new THREE.PMREMGenerator(renderer);
+
+            sun = new THREE.Vector3();
+            moon = new THREE.Vector3();
+
+            const waterGeometry = new THREE.PlaneGeometry(40000, 40000);
+            water = new THREE.Water(
+                waterGeometry,
+                {
+                    textureWidth: 512,
+                    textureHeight: 512,
+                    waterNormals: new THREE.TextureLoader().load(
+                        'https://threejs.org/examples/textures/waternormals.jpg',
+                        function (texture) {
+                            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                        }
+                    ),
+                    sunDirection: new THREE.Vector3(),
+                    sunColor: SUNSET_COLOR.getHex(),
+                    waterColor: WATER_BASE_SUNSET.getHex(),
+                    distortionScale: 1.5,
+                    fog: true
+                }
+            );
+            water.rotation.x = -Math.PI / 2;
+            scene.add(water);
+
+            scene.fog = new THREE.FogExp2(0x8899aa, 0.000);
+
+            sky = new THREE.Sky();
+            sky.scale.setScalar(10000);
+            scene.add(sky);
+            
+            const skyUniforms = sky.material.uniforms;
+            skyUniforms['turbidity'].value = 10;
+            skyUniforms['rayleigh'].value = 3;
+            skyUniforms['mieCoefficient'].value = 0.000; 
+            skyUniforms['mieDirectionalG'].value = 0.8; 
+
+            particleGeo = new THREE.SphereGeometry(0.4, 16, 16); 
+
+            createSunAndMoon();
+            createStars();
+            createShootingStar(); 
+            createParticleTexture();
+            createBioluminescence();
+            createWhale(); 
+            createBirds();
+
+            ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
+            scene.add(ambientLight);
+            
+            directionalLight = new THREE.DirectionalLight(SUNSET_COLOR.getHex(), 1); 
+            scene.add(directionalLight);
+
+            createRock();
+            createFloaters(12, 100, 10, 4, 4, 6);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enablePan = false; 
+            controls.minDistance = 2.0; 
+            controls.maxDistance = 250.0; 
+            controls.maxPolarAngle = 1.55; 
+            
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('pointerdown', onPointerDown);
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('mousemove', resetUITimer);
+            window.addEventListener('touchstart', resetUITimer);
+            window.addEventListener('wheel', resetUITimer);
+            
+            setupUI();
+            setSliderToProgress(17.5 / 24); 
+        }
+        
+        function updateNotebookUI() {
+            const msgUl = document.getElementById('notebook-messages');
+            const itemsUl = document.getElementById('notebook-items');
+            
+            if (msgUl) {
+                msgUl.innerHTML = '';
+                if (readMessagesList.length === 0) {
+                    msgUl.innerHTML = '<li>まだメッセージを拾っていません。</li>';
+                } else {
+                    for (let i = readMessagesList.length - 1; i >= 0; i--) {
+                        const li = document.createElement('li');
+                        li.innerText = readMessagesList[i];
+                        msgUl.appendChild(li);
+                    }
+                }
+            }
+            
+            if (itemsUl) {
+                itemsUl.innerHTML = '';
+                if (touchedItemsSet.size === 0) {
+                    itemsUl.innerHTML = '<li class="item-li" style="cursor:default;">特別な漂流物にはまだ触れていません。</li>';
+                    showPreviewModel(""); // プレビューをクリア
+                } else {
+                    touchedItemsSet.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = 'item-li';
+                        li.innerText = item;
+                        li.addEventListener('click', () => {
+                            showPreviewModel(item);
+                            // 選択状態のスタイリング
+                            document.querySelectorAll('.item-li').forEach(el => el.style.background = '');
+                            li.style.background = 'rgba(212, 175, 55, 0.2)';
+                        });
+                        itemsUl.appendChild(li);
+                    });
+                    
+                    // リストの最初の一つを自動選択
+                    const firstLi = itemsUl.querySelector('.item-li');
+                    if (firstLi) firstLi.click();
+                }
+            }
+        }
+
+        // --- プレビュー用3D空間の初期化 ---
+        function initPreview() {
+            const canvas = document.getElementById('preview-canvas');
+            if(!canvas) return;
+            
+            previewRenderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            previewScene = new THREE.Scene();
+            previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+            previewCamera.position.z = 6;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            previewScene.add(ambient);
+            
+            // レコードの溝や時計の金属が綺麗に反射するようにライトを調整
+            const dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+            dirLight.position.set(5, 10, 7); 
+            previewScene.add(dirLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 1.2, 20); // 反射・ハイライト用
+            pointLight.position.set(0, 5, 2);
+            previewScene.add(pointLight);
+
+            const fillLight = new THREE.DirectionalLight(0x88bbff, 0.8);
+            fillLight.position.set(-5, 2, -5);
+            previewScene.add(fillLight);
+
+            // タッチ・マウス操作の手動実装（スワイプ回転）
+            canvas.addEventListener('pointerdown', (e) => {
+                previewIsDragging = true;
+                previewPrevMouse.x = e.clientX;
+                previewPrevMouse.y = e.clientY;
+                e.stopPropagation();
+            });
+            window.addEventListener('pointermove', (e) => {
+                if(!previewIsDragging || !previewModel) return;
+                const dx = e.clientX - previewPrevMouse.x;
+                const dy = e.clientY - previewPrevMouse.y;
+                previewModel.rotation.y += dx * 0.015;
+                previewModel.rotation.x += dy * 0.015;
+                previewPrevMouse.x = e.clientX;
+                previewPrevMouse.y = e.clientY;
+            });
+            window.addEventListener('pointerup', () => {
+                previewIsDragging = false;
+            });
+            
+            // ホイールでズーム
+            canvas.addEventListener('wheel', (e) => {
+                previewCamera.position.z += e.deltaY * 0.005;
+                previewCamera.position.z = THREE.MathUtils.clamp(previewCamera.position.z, 2.5, 15);
+                e.preventDefault();
+            }, {passive: false});
+            
+            // スマホのピンチ操作（2本指ズーム）
+            canvas.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 2) {
+                    previewPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                }
+            }, {passive: false});
+            canvas.addEventListener('touchmove', (e) => {
+                if(e.touches.length === 2) {
+                    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    const diff = previewPinchDist - dist;
+                    previewCamera.position.z += diff * 0.03;
+                    previewCamera.position.z = THREE.MathUtils.clamp(previewCamera.position.z, 2.5, 15);
+                    previewPinchDist = dist;
+                    e.preventDefault();
+                }
+            }, {passive: false});
+        }
+
+        function resizePreview() {
+            const container = document.getElementById('preview-area');
+            if(!container || !previewRenderer) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            if (w === 0 || h === 0) return;
+            previewRenderer.setSize(w, h);
+            previewCamera.aspect = w / h;
+            previewCamera.updateProjectionMatrix();
+        }
+
+        // --- プレビュー用メッシュの生成関数 ---
+        function createPreviewWood() {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0x4a3b32, roughness: 0.9, flatShading: true });
+            const m1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3, 8), mat);
+            m1.rotation.z = Math.PI / 2;
+            group.add(m1);
+            const m2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 2, 8), mat);
+            m2.rotation.z = Math.PI / 2; m2.position.set(2.2, 0.2, 0.1); m2.rotation.y = 0.2;
+            group.add(m2);
+            group.position.x = -1;
+            return group;
+        }
+
+        function createPreviewLantern() {
+            const group = new THREE.Group();
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x2a3035, roughness: 0.6, metalness: 0.5, flatShading: true });
+            
+            group.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.6), metalMat));
+            
+            // ガラス自体を少し発光させて透明感を出す
+            const glassMat = new THREE.MeshStandardMaterial({ 
+                color: 0xffeedd, transparent: true, opacity: 0.25, 
+                roughness: 0.1, side: THREE.DoubleSide, emissive: 0xffaa00, emissiveIntensity: 0.1 
+            });
+            const glass = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.72, 0.52), glassMat);
+            glass.position.y = 0.43; group.add(glass);
+            
+            // 柱を少し長くして隙間をなくす
+            const pGeo = new THREE.BoxGeometry(0.04, 0.76, 0.04);
+            [[-0.28, 0.28], [0.28, 0.28], [-0.28, -0.28], [0.28, -0.28]].forEach(p => {
+                const pillar = new THREE.Mesh(pGeo, metalMat); pillar.position.set(p[0], 0.43, p[1]); group.add(pillar);
+            });
+            
+            // 屋根の土台（隙間を埋めるため厚くする）
+            const roofBase = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.06, 0.66), metalMat);
+            roofBase.position.y = 0.82; group.add(roofBase);
+            
+            // 屋根
+            const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.33, 0.4, 4), metalMat);
+            roof.rotateY(Math.PI / 4); roof.position.y = 1.05; group.add(roof);
+            
+            // 屋根の上のキャップ
+            const cap = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.16), metalMat);
+            cap.position.y = 1.29; group.add(cap);
+            
+            // リング
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.015, 8, 16), metalMat);
+            ring.position.y = 1.48; group.add(ring);
+            
+            // ろうそく
+            const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.35, 16), new THREE.MeshStandardMaterial({ color: 0xffddaa, emissive: 0xff6600, emissiveIntensity: 0.8 }));
+            candle.position.y = 0.25; group.add(candle);
+            
+            // 炎の表現
+            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+            flame.position.y = 0.48; group.add(flame);
+            
+            // 光源
+            const pLight = new THREE.PointLight(0xff7700, 2.0, 5.0);
+            pLight.position.y = 0.48;
+            group.add(pLight);
+            
+            group.scale.set(1.5, 1.5, 1.5);
+            group.position.y = -0.5;
+            return group;
+        }
+
+        function createPreviewWatch() {
+            const group = new THREE.Group();
+            const brassMat = new THREE.MeshStandardMaterial({ color: 0xb5a642, roughness: 0.3, metalness: 0.8 });
+            group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16), brassMat));
+            group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xfffae6, roughness: 0.9 })));
+            
+            const handsMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
+            const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.005, 0.12).translate(0, 0, 0.05), handsMat);
+            hHand.position.set(0, 0.065, 0); hHand.rotation.y = 1.5; group.add(hHand);
+            const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.005, 0.18).translate(0, 0, 0.08), handsMat);
+            mHand.position.set(0, 0.07, 0); mHand.rotation.y = 0.5; group.add(mHand);
+            
+            const glass = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.1 }));
+            glass.position.y = 0.05; glass.scale.y = 0.3; group.add(glass);
+            
+            const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 8), brassMat);
+            crown.position.set(0, 0, -0.34); crown.rotation.x = Math.PI / 2; group.add(crown);
+            
+            group.scale.set(3.5, 3.5, 3.5);
+            group.rotation.x = Math.PI / 4;
+            return group;
+        }
+
+        function createPreviewRecord() {
+            const group = new THREE.Group();
+            
+            // ベース円盤のroughnessを下げてツヤを出す
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.15, metalness: 0.2 });
+            const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.02, 64), baseMat);
+            group.add(vinyl);
+            
+            // 溝（リング）をはっきりさせるために色を明るく、数を増やす
+            const ringMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2, metalness: 0.8 });
+            for(let r = 0; r < 8; r++) {
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18 + r * 0.035, 0.003, 4, 64), ringMat);
+                ring.rotation.x = Math.PI / 2; 
+                ring.position.y = 0.012; // 確実にベースより上に出す
+                group.add(ring);
+            }
+            
+            const labelColors = [0x8b0000, 0xdaa520, 0x2f4f4f];
+            const labelColor = labelColors[Math.floor(Math.random() * labelColors.length)];
+            const labelMat = new THREE.MeshStandardMaterial({ color: labelColor, roughness: 0.8 });
+            const label = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.022, 32), labelMat);
+            group.add(label);
+            
+            const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.025, 16), holeMat);
+            group.add(hole);
+            
+            group.scale.set(3, 3, 3);
+            group.rotation.x = Math.PI / 3;
+            return group;
+        }
+
+        function createPreviewGlassBall() {
+            const group = new THREE.Group();
+            
+            // 透過と反射を持つガラスの質感
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xaaccff, transmission: 0.9, opacity: 0.9, transparent: true, roughness: 0.1, metalness: 0.1, ior: 1.5
+            });
+            const glassGeo = new THREE.SphereGeometry(0.35, 32, 32);
+            const glassMesh = new THREE.Mesh(glassGeo, glassMat);
+            group.add(glassMesh);
+            
+            // 麻縄の網目
+            const ropeMat = new THREE.MeshStandardMaterial({
+                color: 0x8b5a2b, roughness: 1.0
+            });
+            for(let r = 0; r < 4; r++) {
+                const ropeGeo = new THREE.TorusGeometry(0.355, 0.012, 8, 32);
+                const rope = new THREE.Mesh(ropeGeo, ropeMat);
+                rope.rotation.y = (Math.PI / 4) * r;
+                group.add(rope);
+            }
+            const ropeGeoH = new THREE.TorusGeometry(0.355, 0.012, 8, 32);
+            const ropeH = new THREE.Mesh(ropeGeoH, ropeMat);
+            ropeH.rotation.x = Math.PI / 2;
+            group.add(ropeH);
+
+            // 結び目
+            const knot = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8), ropeMat);
+            knot.position.y = 0.35;
+            group.add(knot);
+
+            group.scale.set(3.5, 3.5, 3.5);
+            group.position.y = -0.2;
+            return group;
+        }
+
+        function showPreviewModel(itemName) {
+            if(previewModel) {
+                previewScene.remove(previewModel);
+                previewModel = null;
+            }
+            
+            if(itemName === "波間を漂う古い流木") previewModel = createPreviewWood();
+            else if(itemName === "海を漂う古いランタン") previewModel = createPreviewLantern();
+            else if(itemName === "時を刻むアンティーク時計") previewModel = createPreviewWatch();
+            else if(itemName === "ノスタルジックな古いレコード盤") previewModel = createPreviewRecord();
+            else if(itemName === "波間を漂うガラスの浮き玉") previewModel = createPreviewGlassBall();
+
+            const canvas = document.getElementById('preview-canvas');
+            const text = document.getElementById('preview-text');
+            
+            if(previewModel) {
+                previewScene.add(previewModel);
+                previewCamera.position.z = 6;
+                canvas.style.display = 'block';
+                text.style.display = 'block';
+            } else {
+                canvas.style.display = 'none';
+                text.style.display = 'none';
+            }
+        }
+
+        function animatePreview() {
+            if(previewReqId) cancelAnimationFrame(previewReqId);
+            function renderP() {
+                previewReqId = requestAnimationFrame(renderP);
+                if(document.getElementById('notebook-container').style.display === 'flex') {
+                    if(previewModel && !previewIsDragging) {
+                        previewModel.rotation.y += 0.005; // 触っていない時はゆっくり回る
+                    }
+                    if(previewRenderer) {
+                        previewRenderer.render(previewScene, previewCamera);
+                    }
+                }
+            }
+            renderP();
+        }
+
+        function setupUI() {
+            const writeBtn = document.getElementById('write-btn');
+            if (writeBtn) writeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                initAudio(); 
+                document.getElementById('compose-container').style.display = 'flex';
+            });
+            
+            const notebookBtn = document.getElementById('notebook-btn');
+            if (notebookBtn) notebookBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                initAudio();
+                updateNotebookUI();
+                document.getElementById('notebook-container').style.display = 'flex';
+                // 表示直後にリサイズを走らせることでCanvasサイズを確実に合わせる
+                setTimeout(resizePreview, 20);
+            });
+
+            const uiToggleBtn = document.getElementById('ui-toggle-btn');
+            const uiContainer = document.getElementById('ui-container');
+            if (uiToggleBtn && uiContainer) {
+                uiToggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    initAudio();
+                    uiContainer.classList.toggle('collapsed');
+                    resetUITimer();
+                });
+            }
+            
+            const cancelBtn = document.getElementById('cancel-btn');
+            if (cancelBtn) cancelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('compose-container').style.display = 'none';
+                document.getElementById('compose-textarea').value = '';
+            });
+
+            const closeMsgBtn = document.getElementById('close-msg-btn');
+            if (closeMsgBtn) closeMsgBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('message-container').style.display = 'none';
+            });
+            
+            const closeNbBtn = document.getElementById('close-notebook-btn');
+            if (closeNbBtn) closeNbBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('notebook-container').style.display = 'none';
+            });
+            
+            const sendBtn = document.getElementById('send-btn');
+            if (sendBtn) sendBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const textarea = document.getElementById('compose-textarea');
+                const text = textarea ? textarea.value.trim() : '';
+                if (text) {
+                    createNewBottle(text);
+                    document.getElementById('compose-container').style.display = 'none';
+                    if (textarea) textarea.value = '';
+                }
+            });
+            
+            ['ui-container', 'message-container', 'compose-container', 'notebook-container'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('pointerdown', (e) => {
+                        e.stopPropagation();
+                    });
+                }
+            });
+            
+            initCircularSlider();
+            initDialPicker();
+            initPreview();
+            animatePreview();
+        }
+
+        function initDialPicker() {
+            const hText = document.getElementById('hour-text');
+            const mText = document.getElementById('minute-text');
+            const dialPicker = document.getElementById('dial-picker');
+            const dialContainer = document.querySelector('.dial-wheel-container');
+            
+            if (hText) {
+                hText.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDial('hour');
+                });
+                hText.addEventListener('pointerdown', e => e.stopPropagation());
+            }
+            if (mText) {
+                mText.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDial('minute');
+                });
+                mText.addEventListener('pointerdown', e => e.stopPropagation());
+            }
+            
+            if (dialPicker) {
+                dialPicker.addEventListener('click', (e) => {
+                    if (e.target !== dialContainer && !e.target.closest('#dial-wheel')) {
+                        confirmDial();
+                    }
+                });
+            }
+            
+            if (dialContainer) {
+                dialContainer.addEventListener('scroll', () => {
+                    const centerIndex = Math.round(dialContainer.scrollTop / 26);
+                    const lis = document.getElementById('dial-wheel').querySelectorAll('li');
+                    lis.forEach((li, idx) => {
+                        if (idx === centerIndex) {
+                            li.style.color = '#fff';
+                            li.style.fontSize = '1.3rem';
+                            li.style.fontWeight = 'bold';
+                        } else {
+                            li.style.color = 'rgba(255,255,255,0.3)';
+                            li.style.fontSize = '1.1rem';
+                            li.style.fontWeight = 'normal';
+                        }
+                    });
+                });
+                
+                dialContainer.addEventListener('click', (e) => {
+                    if(e.target === dialContainer || e.target.classList.contains('dial-selector')) {
+                        confirmDial();
+                    }
+                });
+            }
+        }
+        
+        function openDial(mode) {
+            isHourMode = (mode === 'hour');
+            const picker = document.getElementById('dial-picker');
+            const wheel = document.getElementById('dial-wheel');
+            
+            wheel.innerHTML = '';
+            const max = isHourMode ? 24 : 60; 
+            
+            for (let i = 0; i < max; i++) {
+                const li = document.createElement('li');
+                li.innerText = i.toString().padStart(2, '0');
+                li.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    confirmDial(i);
+                });
+                wheel.appendChild(li);
+            }
+            
+            picker.style.display = 'flex';
+            
+            setTimeout(() => {
+                const container = document.querySelector('.dial-wheel-container');
+                const targetValue = isHourMode ? currentHours : currentMinutes;
+                container.scrollTop = targetValue * 26;
+                container.dispatchEvent(new Event('scroll'));
+            }, 10);
+        }
+        
+        function confirmDial(selectedValue) {
+            const container = document.querySelector('.dial-wheel-container');
+            let val = selectedValue !== undefined ? selectedValue : Math.round(container.scrollTop / 26);
+            
+            if (isHourMode) {
+                currentHours = val;
+            } else {
+                currentMinutes = val;
+            }
+            
+            let newProgress = (currentHours + currentMinutes / 60) / 24;
+            setSliderToProgress(newProgress);
+            
+            document.getElementById('dial-picker').style.display = 'none';
+        }
+        
+        let isDraggingSlider = false;
+
+        function initCircularSlider() {
+            const circularSlider = document.getElementById('circular-slider');
+            if (!circularSlider) return;
+
+            circularSlider.addEventListener('pointerdown', (e) => {
+                isDraggingSlider = true;
+                updateSliderFromEvent(e);
+                e.stopPropagation();
+                initAudio();
+                resetUITimer();
+            });
+            
+            window.addEventListener('pointermove', (e) => {
+                if (!isDraggingSlider) return;
+                updateSliderFromEvent(e);
+                resetUITimer();
+            });
+            
+            window.addEventListener('pointerup', () => {
+                isDraggingSlider = false;
+            });
+        }
+
+        function setSliderToProgress(progress) {
+            const thetaClock = progress * Math.PI * 2 - Math.PI; 
+            const angle = thetaClock - Math.PI / 2;
+            updateSliderThumb(angle, progress);
+            updateTimeOfDay(progress);
+        }
+
+        function updateSliderFromEvent(e) {
+            const circularSlider = document.getElementById('circular-slider');
+            if (!circularSlider) return;
+            const rect = circularSlider.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            
+            let angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+            
+            let thetaClock = angle + Math.PI / 2; 
+            if (thetaClock < 0) thetaClock += Math.PI * 2;
+            
+            let progress = (thetaClock + Math.PI) % (Math.PI * 2) / (Math.PI * 2);
+            
+            updateSliderThumb(angle, progress);
+            updateTimeOfDay(progress);
+        }
+
+        function updateSliderThumb(angle, progress) {
+            const sliderThumb = document.getElementById('slider-thumb');
+            const timeDisplay = document.getElementById('time-display');
+            if (!sliderThumb || !timeDisplay) return;
+            
+            const r = 50; 
+            const thumbX = 50 + Math.cos(angle) * r;
+            const thumbY = 50 + Math.sin(angle) * r;
+            
+            sliderThumb.style.left = thumbX + 'px';
+            sliderThumb.style.top = thumbY + 'px';
+            
+            let hours = Math.floor(progress * 24);
+            if (hours >= 24) hours = 0;
+            let minutes = Math.floor((progress * 24 - hours) * 60);
+            
+            currentHours = hours;
+            currentMinutes = minutes;
+            
+            const hText = document.getElementById('hour-text');
+            const mText = document.getElementById('minute-text');
+            if (hText) hText.innerText = hours.toString().padStart(2, '0');
+            if (mText) mText.innerText = minutes.toString().padStart(2, '0');
+        }
+
+        function onPointerDown(event) {
+            if (event.target !== renderer.domElement) return;
+
+            initAudio(); 
+            resetUITimer();
+            
+            if (document.getElementById('message-container').style.display === 'flex' || 
+                document.getElementById('compose-container').style.display === 'flex' ||
+                document.getElementById('notebook-container').style.display === 'flex') {
+                return;
+            }
+
+            pointerDownPos.x = event.clientX;
+            pointerDownPos.y = event.clientY;
+        }
+            } else {
+                currentMinutes = val;
+            }
+            
+            let newProgress = (currentHours + currentMinutes / 60) / 24;
+            setSliderToProgress(newProgress);
+            
+            document.getElementById('dial-picker').style.display = 'none';
+        }
+        
+        let isDraggingSlider = false;
+
+        function initCircularSlider() {
+            const circularSlider = document.getElementById('circular-slider');
+            if (!circularSlider) return;
+
+            circularSlider.addEventListener('pointerdown', (e) => {
+                isDraggingSlider = true;
+                updateSliderFromEvent(e);
+                e.stopPropagation();
+                initAudio();
+                resetUITimer();
+            });
+            
+            window.addEventListener('pointermove', (e) => {
+                if (!isDraggingSlider) return;
+                updateSliderFromEvent(e);
+                resetUITimer();
+            });
+            
+            window.addEventListener('pointerup', () => {
+                isDraggingSlider = false;
+            });
+        }
+
+        function setSliderToProgress(progress) {
+            const thetaClock = progress * Math.PI * 2 - Math.PI; 
+            const angle = thetaClock - Math.PI / 2;
+            updateSliderThumb(angle, progress);
+            updateTimeOfDay(progress);
+        }
+
+        function updateSliderFromEvent(e) {
+            const circularSlider = document.getElementById('circular-slider');
+            if (!circularSlider) return;
+            const rect = circularSlider.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            
+            let angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+            
+            let thetaClock = angle + Math.PI / 2; 
+            if (thetaClock < 0) thetaClock += Math.PI * 2;
+            
+            let progress = (thetaClock + Math.PI) % (Math.PI * 2) / (Math.PI * 2);
+            
+            updateSliderThumb(angle, progress);
+            updateTimeOfDay(progress);
+        }
+
+        function updateSliderThumb(angle, progress) {
+            const sliderThumb = document.getElementById('slider-thumb');
+            const timeDisplay = document.getElementById('time-display');
+            if (!sliderThumb || !timeDisplay) return;
+            
+            const r = 50; 
+            const thumbX = 50 + Math.cos(angle) * r;
+            const thumbY = 50 + Math.sin(angle) * r;
+            
+            sliderThumb.style.left = thumbX + 'px';
+            sliderThumb.style.top = thumbY + 'px';
+            
+            let hours = Math.floor(progress * 24);
+            if (hours >= 24) hours = 0;
+            let minutes = Math.floor((progress * 24 - hours) * 60);
+            
+            currentHours = hours;
+            currentMinutes = minutes;
+            
+            const hText = document.getElementById('hour-text');
+            const mText = document.getElementById('minute-text');
+            if (hText) hText.innerText = hours.toString().padStart(2, '0');
+            if (mText) mText.innerText = minutes.toString().padStart(2, '0');
+        }
+
+        function onPointerDown(event) {
+            if (event.target !== renderer.domElement) return;
+
+            initAudio(); 
+            resetUITimer();
+            
+            if (document.getElementById('message-container').style.display === 'flex' || 
+                document.getElementById('compose-container').style.display === 'flex' ||
+                document.getElementById('notebook-container').style.display === 'flex') {
+                return;
+            }
+
+            pointerDownPos.x = event.clientX;
+            pointerDownPos.y = event.clientY;
+        }
+
+        function onPointerUp(event) {
+            if (event.target !== renderer.domElement) return;
+
+            if (document.getElementById('message-container').style.display === 'flex' || 
+                document.getElementById('compose-container').style.display === 'flex' ||
+                document.getElementById('notebook-container').style.display === 'flex') {
+                return;
+            }
+
+            const dx = event.clientX - pointerDownPos.x;
+            const dy = event.clientY - pointerDownPos.y;
+            
+            if (dx * dx + dy * dy > 400) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const activeFloaters = floaters.filter(f => !f.userData.isSinking);
+            
+            for (let i = 0; i < activeFloaters.length; i++) {
+                const group = activeFloaters[i];
+                const intersects = raycaster.intersectObjects(group.children, true);
+                
+                if (intersects.length > 0) {
+                    if (group.userData.isBottle) {
+                        showMessage(group.userData.message);
+                        group.userData.isSinking = true; 
+                        
+                        spawnRipple(group.position); 
+
+                        const cork = group.getObjectByName("cork");
+                        const letter = group.getObjectByName("letter");
+                        const string = group.getObjectByName("string");
+                        if (cork) cork.visible = false;
+                        if (letter) letter.visible = false;
+                        if (string) string.visible = false;
+
+                    } else if (group.userData.isLantern) {
+                        playChimeSound();
+                        group.userData.glowStartTime = performance.now();
+                        group.userData.isGlowing = true;
+                        spawnLanternParticles(group.position);
+                        touchedItemsSet.add("海を漂う古いランタン");
+                    } else if (group.userData.isWatch) {
+                        playWatchSoundAndShowTime();
+                        spawnRipple(group.position);
+                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.15;
+                        touchedItemsSet.add("時を刻むアンティーク時計");
+                    } else if (group.userData.isRecord) {
+                        playRecordSound();
+                        spawnRipple(group.position);
+                        group.userData.rotSpeed += 0.2; 
+                        touchedItemsSet.add("ノスタルジックな古いレコード盤");
+                    } else if (group.userData.isGlassBall) {
+                        playGlassSound();
+                        spawnRipple(group.position);
+                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.3; 
+                        touchedItemsSet.add("波間を漂うガラスの浮き玉");
+                    } else {
+                        group.userData.isPushed = true;
+                        group.userData.pushStartTime = performance.now();
+                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.1; 
+                        touchedItemsSet.add("波間を漂う古い流木");
+                    }
+                    break;
+                }
+            }
+        }
+        
+        function showMessage(text) {
+            const msgText = document.getElementById('message-text');
+            if (msgText) msgText.innerText = text;
+            
+            const msgContainer = document.getElementById('message-container');
+            if (msgContainer) msgContainer.style.display = 'flex';
+            
+            // ノートに記録
+            if (!readMessagesList.includes(text)) {
+                readMessagesList.push(text);
+            }
+            
+            readBottlesCount++;
+            const counterElement = document.getElementById('bottle-counter');
+            if (counterElement) {
+                counterElement.innerHTML = '🍾 <span class="bottle-count-num">' + readBottlesCount + '</span>';
+                counterElement.style.textShadow = '0 0 15px rgba(255, 255, 255, 1)';
+                setTimeout(() => {
+                    counterElement.style.textShadow = '0px 2px 4px rgba(0, 0, 0, 0.9)';
+                }, 500);
+            }
+        }
+
+        function createRock() {
+            const geometry = new THREE.IcosahedronGeometry(3.5, 4);
+            const pos = geometry.attributes.position;
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let y = pos.getY(i);
+                let z = pos.getZ(i);
+
+                const len = Math.sqrt(x * x + y * y + z * z);
+                const nx = x / len;
+                const ny = y / len;
+                const nz = z / len;
+
+                const warp = Math.sin(nx * 3.2 + ny * 2.1 + nz * 1.8) * 2.0 
+                           + Math.cos(nx * 1.8 - nz * 3.8) * 1.6;
+
+                const sharpSpike = Math.pow(Math.abs(Math.sin(nx * 5.2 + ny * 3.5)), 2.5) * 1.85
+                                 + Math.pow(Math.abs(Math.cos(nz * 6.0 + nx * 3.8)), 2.6) * 1.65;
+
+                const crag = Math.sin(nx * 8.5 + ny * 6.5) * Math.cos(nz * 7.5 + ny * 4.0) * 0.4;
+                const gouge = Math.sin(nx * 2.2 + 0.8) * Math.cos(nz * 2.8) * 2.0;
+
+                const radiusScale = 0.72 + (warp * 0.28) + (sharpSpike * 0.28) + (crag * 0.15) + (gouge * 0.22);
+
+                x = nx * len * radiusScale;
+                y = ny * len * radiusScale;
+                z = nz * len * radiusScale;
+
+                if (y > 0) {
+                    y *= 1.25;
+                    y += Math.pow(Math.max(0, ny), 1.8) * 1.35 * (1.0 + Math.sin(nx * 4.5) * 0.5);
+                } else {
+                    y *= 0.85;
+                }
+
+                x += Math.sin(y * 0.45) * 1.3;
+                z += Math.cos(y * 0.35) * 1.0;
+
+                pos.setXYZ(i, x, y, z);
+            }
+
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x546270, 
+                roughness: 0.6,
+                metalness: 0.2,
+                emissive: 0x111b24,
+                flatShading: true
+            });
+
+            rock = new THREE.Mesh(geometry, material);
+            rock.position.set(0, 1.4, 0);
+            scene.add(rock);
+        }
+
+        function createSingleBottle(message, startPos) {
+            const bottleGroup = new THREE.Group();
+
+            const bottlePoints = [
+                new THREE.Vector2(0.00, 0.00),
+                new THREE.Vector2(0.12, 0.02),
+                new THREE.Vector2(0.15, 0.08),
+                new THREE.Vector2(0.15, 0.55),
+                new THREE.Vector2(0.14, 0.65),
+                new THREE.Vector2(0.09, 0.75),
+                new THREE.Vector2(0.06, 0.85),
+                new THREE.Vector2(0.06, 1.10),
+                new THREE.Vector2(0.075, 1.13),
+                new THREE.Vector2(0.075, 1.17),
+                new THREE.Vector2(0.055, 1.18)
+            ];
+
+            const bottleGeo = new THREE.LatheGeometry(bottlePoints, 24);
+            const glassColor = 0x8c5e35; 
+
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: glassColor,
+                transmission: 0.9,
+                opacity: 0.95,
+                transparent: true,
+                roughness: 0.05,
+                metalness: 0.0,
+                ior: 1.52,
+                thickness: 0.25,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.08
+            });
+
+            const bottleMesh = new THREE.Mesh(bottleGeo, glassMat);
+            bottleGroup.add(bottleMesh);
+
+            const corkGeo = new THREE.CylinderGeometry(0.054, 0.048, 0.16, 16);
+            const corkMat = new THREE.MeshStandardMaterial({ color: 0x8c5933, roughness: 0.92 });
+            const corkMesh = new THREE.Mesh(corkGeo, corkMat);
+            corkMesh.position.y = 1.16;
+            corkMesh.name = "cork";
+            bottleGroup.add(corkMesh);
+
+            const letterGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.46, 16);
+            const letterMat = new THREE.MeshStandardMaterial({ color: 0xf2e3c6, roughness: 0.75 });
+            const letterMesh = new THREE.Mesh(letterGeo, letterMat);
+            letterMesh.position.set(0, 0.32, 0);
+            letterMesh.rotation.z = 0.08;
+            letterMesh.name = "letter";
+            bottleGroup.add(letterMesh);
+
+            const stringGeo = new THREE.TorusGeometry(0.054, 0.009, 8, 16);
+            const stringMat = new THREE.MeshStandardMaterial({ color: 0xa8201a, roughness: 0.6 });
+            const stringMesh = new THREE.Mesh(stringGeo, stringMat);
+            stringMesh.rotation.x = Math.PI / 2;
+            stringMesh.position.set(0, 0.32, 0);
+            stringMesh.name = "string";
+            bottleGroup.add(stringMesh);
+
+            bottleMesh.rotation.z = -Math.PI / 2;
+            corkMesh.rotation.z = -Math.PI / 2;
+            corkMesh.position.set(1.16, 0, 0);
+            letterMesh.rotation.z = -Math.PI / 2;
+            letterMesh.position.set(0.32, -0.01, 0);
+            stringMesh.rotation.y = Math.PI / 2;
+            stringMesh.position.set(0.32, -0.01, 0);
+
+            bottleGroup.scale.set(3.5, 3.5, 3.5);
+
+            if (startPos) {
+                bottleGroup.position.copy(startPos);
+            } else {
+                bottleGroup.position.set((Math.random() - 0.5) * 300, -0.05, (Math.random() - 0.5) * 200 - 20);
+            }
+            
+            bottleGroup.userData = {
+                baseSpeedX: -0.015 + (Math.random() - 0.5) * 0.01,
+                baseSpeedZ: 0.022 + (Math.random() - 0.5) * 0.01,
+                vx: 0,
+                vz: 0,
+                baseRotSpeed: 0.002 + (Math.random() - 0.5) * 0.002,
+                rotSpeed: 0.002,
+                phase: Math.random() * Math.PI * 2,
+                bobHeight: 0.07 + Math.random() * 0.03,
+                isBottle: true,
+                message: message || PRESET_MESSAGES[Math.floor(Math.random() * PRESET_MESSAGES.length)],
+                isSinking: false
+            };
+            
+            scene.add(bottleGroup);
+            floaters.push(bottleGroup);
+            return bottleGroup;
+        }
+
+        function createNewBottle(message) {
+            const dir = new THREE.Vector3(0, 0, -1);
+            dir.applyQuaternion(camera.quaternion);
+            dir.y = 0;
+            
+            if (dir.lengthSq() < 0.0001) {
+                dir.set(0, 0, -1);
+            } else {
+                dir.normalize();
+            }
+            
+            const pos = camera.position.clone().add(dir.multiplyScalar(8));
+            pos.y = -0.05;
+            
+            createSingleBottle(message, pos);
+            spawnRipple(pos); 
+
+            const maxBottles = 40; 
+            let currentBottleCount = 0;
+            for (let i = 0; i < floaters.length; i++) {
+                if (floaters[i].userData.isBottle) currentBottleCount++;
+            }
+            
+            if (currentBottleCount > maxBottles) {
+                for (let i = 0; i < floaters.length; i++) {
+                    if (floaters[i].userData.isBottle && !floaters[i].userData.isSinking) {
+                        const oldBottle = floaters[i];
+                        scene.remove(oldBottle);
+                        oldBottle.traverse((child) => {
+                            if (child.isMesh) {
+                                if (child.geometry) child.geometry.dispose();
+                                if (child.material) child.material.dispose();
+                            }
+                        });
+                        floaters.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15) {
+            floaters = [];
+
+            for(let i=0; i<bottleCount; i++) {
+                createSingleBottle();
+            }
+
+            function createBentSegment(woodMaterial, radiusBase, radiusMid, radiusTip, len1, len2, bendAngleY, bendAngleZ) {
+                const group = new THREE.Group();
+
+                const geo1 = new THREE.CylinderGeometry(radiusMid, radiusBase, len1, 8);
+                const mesh1 = new THREE.Mesh(geo1, woodMaterial);
+                mesh1.rotation.z = -Math.PI / 2;
+                mesh1.position.x = len1 / 2;
+                group.add(mesh1);
+
+                const joint = new THREE.Group();
+                joint.position.set(len1, 0, 0);
+                joint.rotation.y = bendAngleY;
+                joint.rotation.z = bendAngleZ;
+
+                const geo2 = new THREE.CylinderGeometry(radiusTip, radiusMid, len2, 8);
+                const mesh2 = new THREE.Mesh(geo2, woodMaterial);
+                mesh2.rotation.z = -Math.PI / 2;
+                mesh2.position.x = len2 / 2;
+                joint.add(mesh2);
+
+                group.add(joint);
+                group.position.x = -(len1 + len2 * Math.cos(bendAngleY)) / 2;
+                return { group, joint };
+            }
+
+            for (let i = 0; i < woodCount; i++) {
+                const floaterGroup = new THREE.Group();
+                const typeChoice = Math.random();
+
+                const woodMaterial = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color().setHSL(0.08, 0.35 + Math.random() * 0.2, 0.20 + Math.random() * 0.15),
+                    roughness: 0.9,
+                    metalness: 0.05,
+                    flatShading: true
+                });
+
+                if (typeChoice < 0.4) {
+                    const angleY = (0.4 + Math.random() * 0.45) * (Math.random() < 0.5 ? 1 : -1);
+                    const angleZ = (Math.random() - 0.5) * 0.2;
+                    const { group } = createBentSegment(woodMaterial, 0.20, 0.15, 0.08, 2.6, 2.2, angleY, angleZ);
+                    floaterGroup.add(group);
+                } else if (typeChoice < 0.75) {
+                    const angleY = (0.35 + Math.random() * 0.4) * (Math.random() < 0.5 ? 1 : -1);
+                    const { group, joint } = createBentSegment(woodMaterial, 0.26, 0.18, 0.10, 3.0, 2.4, angleY, 0.1);
+                    
+                    const subGeo = new THREE.CylinderGeometry(0.04, 0.10, 1.8, 6);
+                    const subMesh = new THREE.Mesh(subGeo, woodMaterial);
+                    subMesh.rotation.z = -Math.PI / 2;
+                    subMesh.rotation.y = -angleY * 1.4;
+                    subMesh.position.x = 0.9;
+                    joint.add(subMesh);
+
+                    floaterGroup.add(group);
+                } else {
+                    const angleY = (0.25 + Math.random() * 0.35) * (Math.random() < 0.5 ? 1 : -1);
+                    const { group } = createBentSegment(woodMaterial, 0.40, 0.30, 0.18, 3.4, 2.8, angleY, 0.05);
+                    floaterGroup.add(group);
+                }
+
+                floaterGroup.position.x = (Math.random() - 0.5) * 300;
+                floaterGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                floaterGroup.position.y = 0;
+                floaterGroup.rotation.y = Math.random() * Math.PI * 2;
+
+                const baseRot = (Math.random() - 0.5) * 0.004;
+                floaterGroup.userData = {
+                    baseSpeedX: -0.015 - Math.random() * 0.015,
+                    baseSpeedZ: 0.02 + Math.random() * 0.02,
+                    vx: 0,
+                    vz: 0,
+                    baseRotSpeed: baseRot,
+                    rotSpeed: baseRot,
+                    phase: Math.random() * Math.PI * 2,
+                    bobHeight: 0.05 + Math.random() * 0.04,
+                    isBottle: false
+                };
+
+                scene.add(floaterGroup);
+                floaters.push(floaterGroup);
+            }
+
+            const glowMat = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vViewPosition;
+                    void main() {
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        vViewPosition = -mvPosition.xyz;
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vViewPosition;
+                    void main() {
+                        vec3 normal = normalize(vNormal);
+                        vec3 viewDir = normalize(vViewPosition);
+                        
+                        float intensity = max(dot(normal, viewDir), 0.0);
+                        intensity = pow(intensity, 2.5);
+                        vec3 color = vec3(1.0, 0.45, 0.05);
+                        gl_FragColor = vec4(color, intensity * 0.3);
+                    }
+                `,
+                blending: THREE.AdditiveBlending, 
+                transparent: true,
+                depthWrite: false,
+                depthTest: true, 
+                side: THREE.FrontSide
+            });
+            
+            const glowGeo = new THREE.SphereGeometry(3.2, 32, 32);
+
+            for(let i=0; i<lanternCount; i++) {
+                const lanternGroup = new THREE.Group();
+                const metalMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x15181a, roughness: 0.7, metalness: 0.3, flatShading: true
+                });
+
+                const baseGeo = new THREE.BoxGeometry(0.6, 0.08, 0.6);
+                const base = new THREE.Mesh(baseGeo, metalMat);
+                base.position.y = 0.04;
+                lanternGroup.add(base);
+
+                const glassGeo = new THREE.BoxGeometry(0.52, 0.72, 0.52);
+                const glassMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff, transparent: true, opacity: 0.15,   
+                    roughness: 0.02, metalness: 0.9, side: THREE.DoubleSide
+                });
+                const glass = new THREE.Mesh(glassGeo, glassMat);
+                glass.position.y = 0.43; 
+                lanternGroup.add(glass);
+
+                const pillarGeo = new THREE.BoxGeometry(0.04, 0.7, 0.04);
+                const positions = [
+                    [-0.28, 0.28], [0.28, 0.28], 
+                    [-0.28, -0.28], [0.28, -0.28]
+                ];
+                positions.forEach(pos => {
+                    const pillar = new THREE.Mesh(pillarGeo, metalMat);
+                    pillar.position.set(pos[0], 0.43, pos[1]);
+                    lanternGroup.add(pillar);
+                });
+
+                const roofBaseGeo = new THREE.BoxGeometry(0.66, 0.04, 0.66);
+                const roofBase = new THREE.Mesh(roofBaseGeo, metalMat);
+                roofBase.position.y = 0.8;
+                lanternGroup.add(roofBase);
+
+                const roofGeo = new THREE.CylinderGeometry(0.08, 0.33, 0.4, 4);
+                roofGeo.rotateY(Math.PI / 4); 
+                const roof = new THREE.Mesh(roofGeo, metalMat);
+                roof.position.y = 1.02;
+                lanternGroup.add(roof);
+
+                const capGeo = new THREE.BoxGeometry(0.16, 0.08, 0.16);
+                const cap = new THREE.Mesh(capGeo, metalMat);
+                cap.position.y = 1.26;
+                lanternGroup.add(cap);
+
+                const ringGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
+                const ring = new THREE.Mesh(ringGeo, metalMat);
+                ring.position.y = 1.45;
+                lanternGroup.add(ring);
+
+                const candleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
+                const candleMat = new THREE.MeshBasicMaterial({ color: 0xffb766 });
+                const candle = new THREE.Mesh(candleGeo, candleMat);
+                candle.position.y = 0.25;
+                lanternGroup.add(candle);
+
+                const pLight = new THREE.PointLight(0xff7700, 0.5, 12.0);
+                pLight.position.y = 0.4;
+                pLight.name = "pLight";
+                lanternGroup.add(pLight);
+
+                const glow = new THREE.Mesh(glowGeo, glowMat);
+                glow.position.y = 0.4;
+                glow.name = "glow";
+                glow.frustumCulled = false; 
+                glow.renderOrder = 1;       
+                glow.raycast = function() {}; 
+                lanternGroup.add(glow);
+
+                lanternGroup.scale.set(1.5, 1.5, 1.5);
+                lanternGroup.position.x = (Math.random() - 0.5) * 300;
+                lanternGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                lanternGroup.position.y = 0;
+                lanternGroup.userData = {
+                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
+                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
+                    vx: 0,
+                    vz: 0,
+                    baseRotSpeed: (Math.random() - 0.5) * 0.01,
+                    rotSpeed: 0,
+                    phase: Math.random() * Math.PI * 2,
+                    bobHeight: 0.03 + Math.random() * 0.02,
+                    isBottle: false,
+                    isLantern: true
+                };
+                scene.add(lanternGroup);
+                floaters.push(lanternGroup);
+            }
+
+            for(let i=0; i<watchCount; i++) {
+                const watchGroup = new THREE.Group();
+                
+                const brassMat = new THREE.MeshStandardMaterial({
+                    color: 0xb5a642, roughness: 0.3, metalness: 0.8
+                });
+                const faceMat = new THREE.MeshStandardMaterial({
+                    color: 0xfffae6, roughness: 0.9, metalness: 0.1
+                });
+                
+                const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+                const body = new THREE.Mesh(bodyGeo, brassMat);
+                watchGroup.add(body);
+                
+                const faceGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.12, 16);
+                const face = new THREE.Mesh(faceGeo, faceMat);
+                watchGroup.add(face);
+                
+                const handsMat = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a, roughness: 0.6, metalness: 0.4
+                });
+                
+                const hourHandGeo = new THREE.BoxGeometry(0.015, 0.005, 0.12);
+                hourHandGeo.translate(0, 0, 0.05); 
+                const hourHand = new THREE.Mesh(hourHandGeo, handsMat);
+                hourHand.position.set(0, 0.065, 0); 
+                hourHand.rotation.y = Math.PI * (Math.random() * 2); 
+                watchGroup.add(hourHand);
+                
+                const minuteHandGeo = new THREE.BoxGeometry(0.01, 0.005, 0.18);
+                minuteHandGeo.translate(0, 0, 0.08);
+                const minuteHand = new THREE.Mesh(minuteHandGeo, handsMat);
+                minuteHand.position.set(0, 0.07, 0); 
+                minuteHand.rotation.y = Math.PI * (Math.random() * 2);
+                watchGroup.add(minuteHand);
+                
+                const pinGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.02, 8);
+                const pin = new THREE.Mesh(pinGeo, brassMat);
+                pin.position.set(0, 0.075, 0);
+                watchGroup.add(pin);
+                
+                const glassGeo = new THREE.SphereGeometry(0.26, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+                const glassMat = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.1, metalness: 0.1
+                });
+                const glass = new THREE.Mesh(glassGeo, glassMat);
+                glass.position.y = 0.05;
+                glass.scale.y = 0.3; 
+                watchGroup.add(glass);
+                
+                const crownGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.08, 8);
+                const crown = new THREE.Mesh(crownGeo, brassMat);
+                crown.position.set(0, 0, -0.34);
+                crown.rotation.x = Math.PI / 2;
+                watchGroup.add(crown);
+                
+                const ringGeo = new THREE.TorusGeometry(0.1, 0.02, 8, 16);
+                const ring = new THREE.Mesh(ringGeo, brassMat);
+                ring.position.set(0, 0, -0.46);
+                watchGroup.add(ring);
+
+                watchGroup.scale.set(1.5, 1.5, 1.5);
+                watchGroup.position.x = (Math.random() - 0.5) * 300;
+                watchGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                watchGroup.position.y = 0;
+                
+                watchGroup.userData = {
+                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
+                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
+                    vx: 0, vz: 0,
+                    baseRotSpeed: (Math.random() - 0.5) * 0.01,
+                    rotSpeed: 0,
+                    phase: Math.random() * Math.PI * 2,
+                    bobHeight: 0.04 + Math.random() * 0.02,
+                    isBottle: false,
+                    isWatch: true
+                };
+                scene.add(watchGroup);
+                floaters.push(watchGroup);
+            }
+
+            for(let i = 0; i < recordCount; i++) {
+                const recordGroup = new THREE.Group();
+                
+                const vinylMat = new THREE.MeshStandardMaterial({
+                    color: 0x050505, roughness: 0.3, metalness: 0.1
+                });
+                const vinylGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.02, 32);
+                const vinyl = new THREE.Mesh(vinylGeo, vinylMat);
+                recordGroup.add(vinyl);
+                
+                for(let r = 0; r < 6; r++) {
+                    const ringGeo = new THREE.TorusGeometry(0.18 + r * 0.045, 0.003, 4, 32);
+                    const ringMat = new THREE.MeshStandardMaterial({
+                        color: 0x1a1a1a, roughness: 0.3, metalness: 0.8
+                    });
+                    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                    ringMesh.rotation.x = Math.PI / 2;
+                    ringMesh.position.y = 0.011; 
+                    recordGroup.add(ringMesh);
+                }
+
+                const labelColors = [0x8b0000, 0xdaa520, 0x2f4f4f, 0x696969];
+                const labelMat = new THREE.MeshStandardMaterial({
+                    color: labelColors[i % labelColors.length], roughness: 0.9, metalness: 0.0
+                });
+                const labelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.025, 32);
+                const label = new THREE.Mesh(labelGeo, labelMat);
+                recordGroup.add(label);
+                
+                const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const holeGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.03, 16);
+                const hole = new THREE.Mesh(holeGeo, holeMat);
+                recordGroup.add(hole);
+
+                recordGroup.scale.set(1.5, 1.5, 1.5);
+                recordGroup.position.x = (Math.random() - 0.5) * 300;
+                recordGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                recordGroup.position.y = 0;
+                
+                recordGroup.userData = {
+                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
+                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
+                    vx: 0, vz: 0,
+                    baseRotSpeed: (Math.random() - 0.5) * 0.02, 
+                    rotSpeed: 0,
+                    phase: Math.random() * Math.PI * 2,
+                    bobHeight: 0.02 + Math.random() * 0.02,
+                    isBottle: false,
+                    isRecord: true
+                };
+                scene.add(recordGroup);
+                floaters.push(recordGroup);
+            }
+
+            for(let i = 0; i < glassBallCount; i++) {
+                const ballGroup = new THREE.Group();
+                
+                // ガラス玉を見つけやすいように、少し明るく、ほんのり発光（反射）させる
+                const glassMat = new THREE.MeshPhysicalMaterial({
+                    color: 0x88ccff, transmission: 0.9, opacity: 0.9, transparent: true, 
+                    roughness: 0.1, metalness: 0.2, emissive: 0x002255, emissiveIntensity: 0.8
+                });
+                const glassGeo = new THREE.SphereGeometry(0.35, 16, 16);
+                const glassMesh = new THREE.Mesh(glassGeo, glassMat);
+                ballGroup.add(glassMesh);
+                
+                const ropeMat = new THREE.MeshStandardMaterial({
+                    color: 0x8b5a2b, roughness: 1.0, flatShading: true
+                });
+                for(let r=0; r<4; r++) {
+                    const ropeGeo = new THREE.TorusGeometry(0.355, 0.015, 4, 16);
+                    const rope = new THREE.Mesh(ropeGeo, ropeMat);
+                    rope.rotation.y = (Math.PI / 4) * r;
+                    ballGroup.add(rope);
+                }
+                const ropeGeoH = new THREE.TorusGeometry(0.355, 0.015, 4, 16);
+                const ropeH = new THREE.Mesh(ropeGeoH, ropeMat);
+                ropeH.rotation.x = Math.PI / 2;
+                ballGroup.add(ropeH);
+
+                const knot = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8), ropeMat);
+                knot.position.y = 0.35;
+                ballGroup.add(knot);
+
+                // サイズも少しだけ大きくして見つけやすく
+                ballGroup.scale.set(2.2, 2.2, 2.2);
+                ballGroup.position.x = (Math.random() - 0.5) * 300;
+                ballGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                ballGroup.position.y = 0;
+                
+                ballGroup.userData = {
+                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
+                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
+                    vx: 0, vz: 0,
+                    baseRotSpeed: (Math.random() - 0.5) * 0.02, 
+                    rotSpeed: 0,
+                    phase: Math.random() * Math.PI * 2,
+                    bobHeight: 0.04 + Math.random() * 0.02,
+                    isBottle: false,
+                    isGlassBall: true
+                };
+                scene.add(ballGroup);
+                floaters.push(ballGroup);
+            }
+        }
+
+        function createSunAndMoon() {
+            const sunGeo = new THREE.SphereGeometry(35, 32, 32); 
+            const sunMat = new THREE.MeshBasicMaterial({
+                color: 0xffffee,
+                transparent: true,
+                opacity: 1,
+                fog: false
+            });
+            sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            scene.add(sunMesh);
+
+            const moonGeo = new THREE.SphereGeometry(35, 32, 32);
+            const moonMat = new THREE.MeshBasicMaterial({
+                color: 0xeeffff,
+                transparent: true,
+                opacity: 0,
+                fog: false
+            });
+            moonMesh = new THREE.Mesh(moonGeo, moonMat);
+            scene.add(moonMesh);
+        }
+
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 15000; 
+            const posArray = new Float32Array(starsCount * 3);
+            const colorArray = new Float32Array(starsCount * 3);
+            const sizeArray = new Float32Array(starsCount);
+            const phaseArray = new Float32Array(starsCount);
+
+            for(let i = 0; i < starsCount; i++) {
+                let x, y, z;
+                do {
+                    x = (Math.random() - 0.5) * 2;
+                    y = (Math.random() - 0.5) * 2;
+                    z = (Math.random() - 0.5) * 2;
+                } while (y < 0.05 || (x*x + y*y + z*z) > 1);
+                
+                const baseDist = 1500 + Math.random() * 1500;
+                const normalize = baseDist / Math.sqrt(x*x + y*y + z*z);
+                
+                posArray[i*3] = x * normalize;
+                posArray[i*3+1] = y * normalize;
+                posArray[i*3+2] = z * normalize;
+                
+                const starType = Math.random();
+                let color = new THREE.Color();
+                if(starType > 0.90) color.setHex(0xb0d5ff); 
+                else if(starType > 0.75) color.setHex(0xffe2be); 
+                else if(starType > 0.50) color.setHex(0xffffff); 
+                else color.setHex(0x88bbff); 
+                
+                const brightness = 0.15 + Math.random() * 0.35;
+                colorArray[i*3] = color.r * brightness;
+                colorArray[i*3+1] = color.g * brightness;
+                colorArray[i*3+2] = color.b * brightness;
+                
+                sizeArray[i] = 1.5 + Math.random() * 3.5;
+                phaseArray[i] = Math.random() * Math.PI * 2;
+            }
+
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            starsGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+            starsGeometry.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
+            starsGeometry.setAttribute('phase', new THREE.BufferAttribute(phaseArray, 1));
+
+            const starsMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    globalOpacity: { value: 0 },
+                    pixelRatio: { value: renderer.getPixelRatio() }
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute float phase;
+                    varying vec3 vColor;
+                    varying float vPhase;
+                    uniform float pixelRatio;
+                    
+                    void main() {
+                        vColor = color;
+                        vPhase = phase;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * pixelRatio * (800.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    uniform float globalOpacity;
+                    varying vec3 vColor;
+                    varying float vPhase;
+                    
+                    void main() {
+                        float twinkle = (sin(time * 2.5 + vPhase) + 1.0) * 0.5;
+                        float alpha = (0.3 + 0.7 * twinkle) * globalOpacity;
+                        
+                        vec2 coord = gl_PointCoord - vec2(0.5);
+                        if(length(coord) > 0.5) discard;
+                        
+                        float dist = length(coord);
+                        float core = smoothstep(0.5, 0.0, dist);
+                        vec3 finalColor = mix(vColor, vec3(1.0), core * 0.8);
+                        
+                        gl_FragColor = vec4(finalColor, alpha * core * 0.6);
+                    }
+                `,
+                transparent: true,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                fog: false
+            });
+
+            stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+
+        function createShootingStar() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(6); 
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.LineBasicMaterial({
+                color: 0xddf4ff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                fog: false
+            });
+
+            shootingStar = new THREE.Line(geometry, material);
+            scene.add(shootingStar);
+        }
+
+        function createParticleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            grad.addColorStop(0, 'rgba(255, 230, 180, 1)');
+            grad.addColorStop(0.3, 'rgba(255, 150, 50, 0.8)');
+            grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+            particleTexture = new THREE.CanvasTexture(canvas);
+        }
+
+        function createBioluminescence() {
+            const count = 1000;
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const phases = new Float32Array(count);
+
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 400; 
+                positions[i * 3 + 1] = 0; 
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 300 - 50; 
+                phases[i] = Math.random() * Math.PI * 2;
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('phase', new THREE.BufferAttribute(phases, 1));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+            grad.addColorStop(0, 'rgba(180, 230, 255, 1)');
+            grad.addColorStop(0.4, 'rgba(100, 200, 255, 0.9)');
+            grad.addColorStop(1, 'rgba(0, 80, 150, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 16, 16);
+            const tex = new THREE.CanvasTexture(canvas);
+
+            const mat = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    globalOpacity: { value: 0 },
+                    map: { value: tex }
+                },
+                vertexShader: `
+                    attribute float phase;
+                    varying float vPhase;
+                    uniform float time;
+                    void main() {
+                        vPhase = phase;
+                        vec3 pos = position;
+                        float driftX = sin(time * 0.3 + phase * 2.0) * 3.0;
+                        float driftZ = cos(time * 0.25 + phase * 1.5) * 3.0;
+                        pos.x += driftX;
+                        pos.z += driftZ;
+                        pos.y = sin(pos.x * 0.15 + time * 1.5 + phase) * 0.15 + cos(pos.z * 0.15 + time * 1.2) * 0.15 - 0.05;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = 20.0 * (10.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D map;
+                    uniform float time;
+                    uniform float globalOpacity;
+                    varying float vPhase;
+                    void main() {
+                        float alpha = (sin(time * 2.5 + vPhase) * 0.4 + 0.6) * globalOpacity * 1.5;
+                        vec4 texColor = texture2D(map, gl_PointCoord);
+                        gl_FragColor = vec4(texColor.rgb, texColor.a * alpha);
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false
+            });
+            stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+
+        function createShootingStar() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(6); 
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.LineBasicMaterial({
+                color: 0xddf4ff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                fog: false
+            });
+
+            shootingStar = new THREE.Line(geometry, material);
+            scene.add(shootingStar);
+        }
+
+        function createParticleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            grad.addColorStop(0, 'rgba(255, 230, 180, 1)');
+            grad.addColorStop(0.3, 'rgba(255, 150, 50, 0.8)');
+            grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+            particleTexture = new THREE.CanvasTexture(canvas);
+        }
+
+        function createBioluminescence() {
+            const count = 1000;
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const phases = new Float32Array(count);
+
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 400; 
+                positions[i * 3 + 1] = 0; 
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 300 - 50; 
+                phases[i] = Math.random() * Math.PI * 2;
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('phase', new THREE.BufferAttribute(phases, 1));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+            grad.addColorStop(0, 'rgba(180, 230, 255, 1)');
+            grad.addColorStop(0.4, 'rgba(100, 200, 255, 0.9)');
+            grad.addColorStop(1, 'rgba(0, 80, 150, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 16, 16);
+            const tex = new THREE.CanvasTexture(canvas);
+
+            const mat = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    globalOpacity: { value: 0 },
+                    map: { value: tex }
+                },
+                vertexShader: `
+                    attribute float phase;
+                    varying float vPhase;
+                    uniform float time;
+                    void main() {
+                        vPhase = phase;
+                        vec3 pos = position;
+                        float driftX = sin(time * 0.3 + phase * 2.0) * 3.0;
+                        float driftZ = cos(time * 0.25 + phase * 1.5) * 3.0;
+                        pos.x += driftX;
+                        pos.z += driftZ;
+                        pos.y = sin(pos.x * 0.15 + time * 1.5 + phase) * 0.15 + cos(pos.z * 0.15 + time * 1.2) * 0.15 - 0.05;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = 20.0 * (10.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D map;
+                    uniform float time;
+                    uniform float globalOpacity;
+                    varying float vPhase;
+                    void main() {
+                        float alpha = (sin(time * 2.5 + vPhase) * 0.4 + 0.6) * globalOpacity * 1.5;
+                        vec4 texColor = texture2D(map, gl_PointCoord);
+                        gl_FragColor = vec4(texColor.rgb, texColor.a * alpha);
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false
+            });
+
+            bioluminescence = new THREE.Points(geo, mat);
+            scene.add(bioluminescence);
+        }
+
+        function createWhale() {
+            whaleGroup = new THREE.Group();
+            
+            const bodyGeo = new THREE.SphereGeometry(15, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            bodyGeo.scale(1, 0.4, 2.5);
+            const whaleMat = new THREE.MeshStandardMaterial({
+                color: 0x1a2b3c, roughness: 0.8, metalness: 0.1
+            });
+            const body = new THREE.Mesh(bodyGeo, whaleMat);
+            whaleGroup.add(body);
+            
+            const tailGeo = new THREE.ConeGeometry(8, 15, 4);
+            tailGeo.rotateX(Math.PI / 2);
+            tailGeo.scale(1, 0.2, 1);
+            const tail = new THREE.Mesh(tailGeo, whaleMat);
+            tail.position.set(0, -2, 25); 
+            tail.rotation.x = -Math.PI / 6;
+            whaleGroup.add(tail);
+            
+            whaleGroup.visible = false;
+            scene.add(whaleGroup);
+        }
+
+        function createBirds() {
+            birdsGroup = new THREE.Group();
+            const mat = new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.DoubleSide, transparent: true, opacity: 0, fog: true });
+            
+            const wingGeo = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                0, 0, -1.5,    // 頭側 (-Z方向が正面)
+                0, 0, 0.5,     // 尻尾側 (+Z)
+                4, 0, 0        // 翼の先端 (+X)
+            ]);
+            wingGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            wingGeo.computeVertexNormals();
+
+            for (let i = 0; i < 7; i++) {
+                const bird = new THREE.Group();
+                
+                const rightWing = new THREE.Mesh(wingGeo, mat);
+                const leftWing = new THREE.Mesh(wingGeo, mat);
+                leftWing.scale.x = -1;
+                
+                bird.add(rightWing);
+                bird.add(leftWing);
+                
+                bird.userData = {
+                    rightWing: rightWing,
+                    leftWing: leftWing,
+                    phase: Math.random() * Math.PI * 2,
+                    flapSpeed: 10.0 + Math.random() * 5.0,
+                    baseY: (Math.random() - 0.5) * 80,
+                    orbitRadius: 150 + Math.random() * 120,
+                    orbitSpeed: 0.15 + Math.random() * 0.1,
+                    orbitPhase: Math.random() * Math.PI * 2,
+                    mat: mat
+                };
+                
+                birdsGroup.add(bird);
+            }
+            
+            // 西の空高くに配置
+            birdsGroup.position.set(400, 250, 0); 
+            scene.add(birdsGroup);
+        }
+
+        function triggerWhale(now) {
+            isWhaleActive = true;
+            whaleStartTime = now;
+            lastWhaleTime = now;
+            
+            const angle = (Math.random() - 0.5) * Math.PI * 0.8 + Math.PI; 
+            const dist = 700 + Math.random() * 500; 
+            
+            whaleGroup.position.set(Math.sin(angle) * dist, -15, Math.cos(angle) * dist);
+            whaleGroup.rotation.y = angle + Math.PI / 2;
+            whaleGroup.userData.hasSung = false;
+            whaleGroup.visible = true;
+        }
+
+        function updateWhale(now) {
+            if (!whaleGroup) return;
+            
+            if (!isWhaleActive) {
+                if (now - lastWhaleTime > nextWhaleInterval) {
+                    triggerWhale(now);
+                    nextWhaleInterval = 45000 + Math.random() * 30000; 
+                }
+                return;
+            }
+            
+            const elapsed = (now - whaleStartTime) * 0.001;
+            const t = elapsed / WHALE_DURATION;
+            
+            if (t >= 1.0) {
+                isWhaleActive = false;
+                whaleGroup.visible = false;
+                return;
+            }
+            
+            const height = Math.sin(t * Math.PI) * 16 - 15;
+            whaleGroup.position.y = height;
+            whaleGroup.translateZ(-0.6); 
+            whaleGroup.rotation.x = Math.cos(t * Math.PI) * 0.2; 
+            
+            if (elapsed >= 4.0 && elapsed < 4.1 && !whaleGroup.userData.hasSung) {
+                playWhaleSound();
+                spawnWhaleSpout(whaleGroup.position);
+                whaleGroup.userData.hasSung = true;
+            }
+        }
+
+        function spawnWhaleSpout(originPos) {
+            const count = 40;
+            for (let i = 0; i < count; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0xffffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending
+                });
+                const mesh = new THREE.Mesh(particleGeo, mat);
+                
+                mesh.position.copy(originPos);
+                mesh.position.z -= 15; 
+                mesh.position.y += 2;
+                
+                const vx = (Math.random() - 0.5) * 0.6;
+                const vy = 1.5 + Math.random() * 2.0; 
+                const vz = (Math.random() - 0.5) * 0.6;
+                
+                scene.add(mesh);
+                whaleParticles.push({
+                    mesh: mesh, vx: vx, vy: vy, vz: vz,
+                    life: 1.0, decay: 0.015 + Math.random() * 0.01 
+                });
+            }
+        }
+
+        function spawnRipple(originPos) {
+            const mat = new THREE.ShaderMaterial({
+                uniforms: {
+                    progress: { value: 0.0 },
+                    color: { value: new THREE.Color(0xffffff) } 
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float progress;
+                    uniform vec3 color;
+                    varying vec2 vUv;
+                    void main() {
+                        vec2 uv = vUv - 0.5;
+                        float dist = length(uv) * 2.0; 
+                        
+                        float ring = 1.0 - smoothstep(0.0, 0.08, abs(dist - progress));
+                        float alpha = ring * pow(1.0 - progress, 1.5) * smoothstep(1.0, 0.8, dist);
+                        
+                        gl_FragColor = vec4(color, alpha * 0.5);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            });
+
+            const geo = new THREE.PlaneGeometry(18, 18); 
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.rotation.x = -Math.PI / 2; 
+            mesh.position.copy(originPos);
+            mesh.position.y = 0.02; 
+            scene.add(mesh);
+
+            ripples.push({
+                mesh: mesh,
+                life: 0.0,
+                speed: 0.003 + Math.random() * 0.002 
+            });
+        }
+
+        function spawnLanternParticles(originPos) {
+            const count = 5 + Math.floor(Math.random() * 4); 
+            for (let i = 0; i < count; i++) {
+                const mat = new THREE.ShaderMaterial({
+                    uniforms: { opacity: { value: 1.0 } },
+                    vertexShader: `
+                        varying vec3 vNormal;
+                        varying vec3 vViewPosition;
+                        void main() {
+                            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                            vViewPosition = -mvPosition.xyz;
+                            vNormal = normalize(normalMatrix * normal);
+                            gl_Position = projectionMatrix * mvPosition;
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float opacity;
+                        varying vec3 vNormal;
+                        varying vec3 vViewPosition;
+                        void main() {
+                            vec3 normal = normalize(vNormal);
+                            vec3 viewDir = normalize(vViewPosition);
+                            float intensity = max(dot(normal, viewDir), 0.0);
+                            intensity = pow(intensity, 2.5);
+                            vec3 color = vec3(1.0, 0.45, 0.05);
+                            gl_FragColor = vec4(color, intensity * opacity);
+                        }
+                    `,
+                    blending: THREE.NormalBlending,
+                    transparent: true,
+                    depthWrite: false,
+                    side: THREE.FrontSide
+                });
+                
+                const mesh = new THREE.Mesh(particleGeo, mat);
+                mesh.position.copy(originPos);
+                mesh.position.x += (Math.random() - 0.5) * 1.2;
+                mesh.position.y += 0.8 + Math.random() * 0.5;
+                mesh.position.z += (Math.random() - 0.5) * 1.2;
+                
+                const vx = (Math.random() - 0.5) * 0.015;
+                const vy = 0.015 + Math.random() * 0.015; 
+                const vz = (Math.random() - 0.5) * 0.015;
+                
+                scene.add(mesh);
+                particles.push({
+                    mesh: mesh, vx: vx, vy: vy, vz: vz,
+                    life: 1.0, decay: 0.008 + Math.random() * 0.01, 
+                    phase: Math.random() * Math.PI * 2 
+                });
+            }
+        }
+
+        function triggerShootingStar(now) {
+            isShootingStarActive = true;
+            shootingStarStartTime = now;
+            lastShootingStarTime = now;
+
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 1000 + Math.random() * 800;
+            const height = 500 + Math.random() * 700;
+
+            shootingStarStartPos.set(
+                Math.cos(angle) * radius,
+                height,
+                Math.sin(angle) * radius - 300
+            );
+
+            const dirAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
+            const length = 500 + Math.random() * 400;
+            shootingStarDir.set(
+                Math.cos(dirAngle) * length,
+                -200 - Math.random() * 250,
+                Math.sin(dirAngle) * length
+            );
+        }
+
+        function updateShootingStar(now) {
+            if (!shootingStar) return;
+
+            if (!isShootingStarActive) {
+                const isDarkEnough = stars && stars.material.uniforms.globalOpacity.value > 0.2;
+                if (isDarkEnough && (now - lastShootingStarTime > nextShootingStarInterval)) {
+                    triggerShootingStar(now);
+                    if (Math.random() < 0.25) {
+                        nextShootingStarInterval = 800 + Math.random() * 2000; 
+                    } else {
+                        nextShootingStarInterval = 8000 + Math.random() * 30000;
+                    }
+                }
+                return;
+            }
+
+            const elapsed = (now - shootingStarStartTime) * 0.001;
+            const t = elapsed / SHOOTING_STAR_DURATION;
+
+            if (t >= 1.0) {
+                isShootingStarActive = false;
+                shootingStar.material.opacity = 0;
+                return;
+            }
+
+            const headT = t;
+            const tailT = Math.max(0, t - 0.28);
+
+            const headPos = shootingStarStartPos.clone().addScaledVector(shootingStarDir, headT);
+            const tailPos = shootingStarStartPos.clone().addScaledVector(shootingStarDir, tailT);
+
+            const positions = shootingStar.geometry.attributes.position.array;
+            positions[0] = headPos.x;
+            positions[1] = headPos.y;
+            positions[2] = headPos.z;
+            positions[3] = tailPos.x;
+            positions[4] = tailPos.y;
+            positions[5] = tailPos.z;
+
+            shootingStar.geometry.attributes.position.needsUpdate = true;
+
+            let opacity = 1.0;
+            if (t < 0.15) {
+                opacity = t / 0.15;
+            } else if (t > 0.65) {
+                opacity = (1.0 - t) / 0.35;
+            }
+            
+            shootingStar.material.opacity = opacity;
+        }
+
+        function updateTimeOfDay(progress) {
+            currentProgress = progress;
+            
+            const hourAngle = (progress - 0.5) * Math.PI * 2;
+            const distance = 4000;
+            
+            const latitude = 35.0; 
+            const maxAltitude = (90 - latitude) * Math.PI / 180; 
+
+            sun.x = Math.sin(hourAngle) * distance; 
+            sun.y = Math.cos(hourAngle) * Math.sin(maxAltitude) * distance; 
+            sun.z = -Math.cos(hourAngle) * Math.cos(maxAltitude) * distance; 
+            
+            moon.x = Math.sin(hourAngle + Math.PI) * distance;
+            moon.y = Math.cos(hourAngle + Math.PI) * Math.sin(maxAltitude) * distance;
+            moon.z = -Math.cos(hourAngle + Math.PI) * Math.cos(maxAltitude) * distance;
+
+            if (sunMesh) sunMesh.position.copy(sun).multiplyScalar(0.25);
+            if (moonMesh) moonMesh.position.copy(moon).multiplyScalar(0.25);
+
+            const elevationRatio = Math.cos(hourAngle);
+            const sunElevation = elevationRatio * 90; 
+            
+            let dayRatio = THREE.MathUtils.clamp((sunElevation + 15) / 30, 0, 1);
+            let nightRatio = 1.0 - dayRatio;
+            
+            let sunsetRaw = THREE.MathUtils.clamp(1.0 - Math.abs(sunElevation - 5) / 35.0, 0, 1);
+            let sunsetRatio = Math.pow(sunsetRaw, 1.5);
+            
+            // 夕暮れ時に海鳥をフェードイン
+            let isEvening = progress > 0.5 && progress < 0.85;
+            if (isEvening && sunsetRatio > 0.05) {
+                targetBirdOpacity = Math.min(sunsetRatio * 1.5, 0.85);
+            } else {
+                targetBirdOpacity = 0;
+            }
+
+            const skyUniforms = sky.material.uniforms;
+            if (skyUniforms['sunPosition']) skyUniforms['sunPosition'].value.copy(sun);
+            
+            let sunMeshColor = new THREE.Color(4.0, 4.0, 4.0).lerp(new THREE.Color(1.0, 0.35, 0.0), sunsetRatio);
+            sunMesh.material.color.copy(sunMeshColor);
+            let sunOpacity = THREE.MathUtils.clamp((sunElevation + 5) / 10, 0, 1);
+            sunOpacity *= (1.0 - Math.pow(sunsetRatio, 0.6)); 
+            sunMesh.material.opacity = sunOpacity;
+            
+            if (bioluminescence) bioluminescence.material.uniforms.globalOpacity.value = nightRatio * 0.8;
+            if (stars) stars.material.uniforms.globalOpacity.value = nightRatio;
+            if (moonMesh) moonMesh.material.opacity = nightRatio;
+
+            if (sunElevation > -10) {
+                directionalLight.position.copy(sun);
+                let dirColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff4400), sunsetRatio);
+                directionalLight.color.copy(dirColor);
+                
+                let lightInt = Math.max(0, (sunElevation + 10) / 20) * (2.0 - sunsetRatio * 1.5); 
+                directionalLight.intensity = lightInt;
+            } else {
+                directionalLight.position.copy(moon);
+                directionalLight.color.copy(MOONLIGHT_COLOR);
+                directionalLight.intensity = nightRatio * 0.95; 
+            }
+            
+            if (sunElevation > -2) {
+                water.material.uniforms['sunDirection'].value.copy(sun).normalize();
+                let intenseSunColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff3300), sunsetRatio);
+                water.material.uniforms['sunColor'].value.copy(intenseSunColor);
+            } else {
+                water.material.uniforms['sunDirection'].value.set(0, 1, 0).normalize(); 
+                let starlightColor = new THREE.Color(0x77aaff).multiplyScalar(nightRatio * 0.35); 
+                water.material.uniforms['sunColor'].value.copy(starlightColor);
+            }
+
+            const ambientDay = new THREE.Color(0x77aaff); 
+            const ambientNight = new THREE.Color(0x283a4e); 
+            const ambientSunset = new THREE.Color(0x442211); 
+            
+            let clearAmbient = new THREE.Color().lerpColors(ambientNight, ambientDay, dayRatio).lerp(ambientSunset, sunsetRatio);
+            ambientLight.color.copy(clearAmbient);
+            
+            let baseAmbientInt = 0.35 + (dayRatio * 0.25) - (sunsetRatio * 0.3);
+            ambientLight.intensity = baseAmbientInt;
+
+            let clearWater = new THREE.Color().lerpColors(WATER_BASE_NIGHT, WATER_BASE_DAY, dayRatio).lerp(WATER_BASE_SUNSET, sunsetRatio);
+            water.material.uniforms['waterColor'].value.copy(clearWater);
+
+            let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25); 
+            renderer.toneMappingExposure = baseExp;
+
+            if (scene.environment) scene.environment.dispose();
+            scene.environment = pmremGenerator.fromScene(sky).texture;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            render();
+        }
+
+        function render() {
+            const time = performance.now() * 0.001;
+            const nowMs = performance.now();
+
+            water.material.uniforms['time'].value += 0.2 / 60.0; 
+            
+            if (bioluminescence) {
+                bioluminescence.material.uniforms['time'].value = time;
+            }
+
+            if (stars) {
+                stars.material.uniforms['time'].value = time;
+                stars.rotation.y = time * 0.004;
+            }
+
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                let r = ripples[i];
+                r.life += r.speed;
+                if (r.life >= 1.0) {
+                    scene.remove(r.mesh);
+                    if (r.mesh.material) r.mesh.material.dispose();
+                    if (r.mesh.geometry) r.mesh.geometry.dispose();
+                    ripples.splice(i, 1);
+                } else {
+                    r.mesh.material.uniforms.progress.value = r.life;
+                }
+            }
+
+            // 海鳥の更新
+            currentBirdOpacity += (targetBirdOpacity - currentBirdOpacity) * 0.02;
+            if (birdsGroup) {
+                if (currentBirdOpacity > 0.01) {
+                    birdsGroup.visible = true;
+                    birdsGroup.children[0].userData.mat.opacity = currentBirdOpacity;
+                    
+                    const nextWorldPos = new THREE.Vector3();
+                    
+                    birdsGroup.children.forEach(bird => {
+                        const ud = bird.userData;
+                        ud.orbitPhase -= ud.orbitSpeed * 0.01; 
+                        
+                        bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
+                        bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
+                        bird.position.y = ud.baseY + Math.sin(time * 0.5 + ud.phase) * 15;
+                        
+                        // 進行方向を向く
+                        const nextX = Math.cos(ud.orbitPhase - 0.1) * ud.orbitRadius;
+                        const nextZ = Math.sin(ud.orbitPhase - 0.1) * ud.orbitRadius;
+                        nextWorldPos.set(nextX, bird.position.y, nextZ);
+                        birdsGroup.localToWorld(nextWorldPos);
+                        bird.lookAt(nextWorldPos);
+                        
+                        // 羽ばたき (時々滑空)
+                        const flapAmount = Math.sin(time * ud.flapSpeed + ud.phase);
+                        const glide = Math.sin(time * 0.4 + ud.phase) > 0.3 ? 0.1 : 1.0; 
+                        const angle = flapAmount * 0.5 * glide + 0.2;
+                        
+                        ud.rightWing.rotation.z = angle;
+                        ud.leftWing.rotation.z = -angle;
+                        
+                        // 滑空時は少し体を傾ける
+                        bird.rotation.z = Math.sin(time * 0.2 + ud.phase) * 0.3 * (1.0 - glide);
+                    });
+                } else {
+                    birdsGroup.visible = false;
+                }
+            }
+
+            if (rock) {
+                 rock.position.y = 1.3 + Math.sin(time * 0.5) * 0.04;
+                 rock.rotation.y = 0.75 + Math.sin(time * 0.1) * 0.01;
+            }
+
+            const rockX = rock ? rock.position.x : 0;
+            const rockZ = rock ? rock.position.z : 0;
+            const avoidRadius = 12.0; 
+
+            floaters.forEach(f => {
+                let forceX = 0, forceZ = 0;
+                
+                if (!f.userData.isBottle || !f.userData.isSinking) {
+                    if (rock) {
+                        const dx = f.position.x - rockX;
+                        const dz = f.position.z - rockZ;
+                        const distSq = dx * dx + dz * dz;
+
+                        if (distSq < avoidRadius * avoidRadius && distSq > 0.001) {
+                            const dist = Math.sqrt(distSq);
+                            const pushFactor = Math.pow(1.0 - (dist / avoidRadius), 2.0) * 0.15;
+                            forceX = (dx / dist) * pushFactor;
+                            forceZ = (dz / dist) * pushFactor;
+                            f.userData.rotSpeed += (Math.random() - 0.5) * 0.001;
+                        }
+                    }
+
+                    f.userData.rotSpeed += (f.userData.baseRotSpeed - f.userData.rotSpeed) * 0.05;
+
+                    f.userData.vx += (f.userData.baseSpeedX + forceX - f.userData.vx) * 0.06;
+                    f.userData.vz += (f.userData.baseSpeedZ + forceZ - f.userData.vz) * 0.06;
+                    f.position.x += f.userData.vx;
+                    f.position.z += f.userData.vz;
+                    
+                    if (f.position.x < -150) { 
+                        f.position.x = 150; 
+                        f.position.z = (Math.random() - 0.5) * 200 - 20; 
+                        f.userData.vx = f.userData.baseSpeedX;
+                        f.userData.vz = f.userData.baseSpeedZ;
+                        f.userData.rotSpeed = f.userData.baseRotSpeed;
+                    }
+                    if (f.position.z > 80) { 
+                        f.position.z = -120; 
+                        f.position.x = (Math.random() - 0.5) * 300; 
+                        f.userData.vx = f.userData.baseSpeedX;
+                        f.userData.vz = f.userData.baseSpeedZ;
+                        f.userData.rotSpeed = f.userData.baseRotSpeed;
+                    }
+                }
+
+                if (f.userData.isBottle) {
+                    if (f.userData.isSinking) {
+                        f.position.y -= 0.015; 
+                        f.rotation.x += 0.01;  
+                        f.rotation.z += 0.01;
+                        
+                        if (f.position.y < -5.0) {
+                            f.userData.isSinking = false;
+                            
+                            f.position.x = (Math.random() - 0.5) * 300;
+                            f.position.z = (Math.random() - 0.5) * 200 - 20;
+                            f.position.y = -0.05;
+                            
+                            f.rotation.set(0, 0, 0);
+                            f.userData.vx = f.userData.baseSpeedX;
+                            f.userData.vz = f.userData.baseSpeedZ;
+                            
+                            f.userData.message = PRESET_MESSAGES[Math.floor(Math.random() * PRESET_MESSAGES.length)];
+
+                            const cork = f.getObjectByName("cork");
+                            const letter = f.getObjectByName("letter");
+                            const string = f.getObjectByName("string");
+                            if (cork) cork.visible = true;
+                            if (letter) letter.visible = true;
+                            if (string) string.visible = true;
+                        }
+                    } else {
+                        f.position.y = -0.05 + Math.sin(time * 1.6 + f.userData.phase) * f.userData.bobHeight;
+                        f.rotation.x = Math.sin(time * 1.4 + f.userData.phase) * 0.12;
+                        f.rotation.z = Math.cos(time * 1.8 + f.userData.phase) * 0.08;
+                        f.rotation.y += f.userData.rotSpeed;
+                    }
+                } else if (f.userData.isLantern) {
+                    let glowScale = 1.0;
+                    let lightIntensity = 0.5;
+                    
+                    if (f.userData.isGlowing) {
+                        const elapsed = nowMs - f.userData.glowStartTime;
+                        const duration = 4000; 
+                        
+                        if (elapsed < duration) {
+                            const intensityPhase = Math.sin((elapsed / duration) * Math.PI);
+                            glowScale = 1.0 + intensityPhase * 1.5; 
+                            lightIntensity = 0.5 + intensityPhase * 3.0; 
+                        } else {
+                            f.userData.isGlowing = false;
+                        }
+                    }
+                    
+                    const pLight = f.getObjectByName("pLight");
+                    const glow = f.getObjectByName("glow");
+                    if (pLight) pLight.intensity = lightIntensity;
+                    if (glow) glow.scale.set(glowScale, glowScale, glowScale);
+
+                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight;
+                    f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
+                    f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
+                    f.rotation.y += f.userData.rotSpeed;
+                } else {
+                    let pushOffset = 0;
+                    if (f.userData.isPushed) {
+                        const elapsed = nowMs - f.userData.pushStartTime;
+                        if (elapsed < 800) {
+                            pushOffset = -Math.sin((elapsed / 800) * Math.PI) * 0.25;
+                        } else {
+                            f.userData.isPushed = false;
+                        }
+                    }
+
+                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
+                    f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
+                    f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
+                    f.rotation.y += f.userData.rotSpeed;
+                }
+            });
+
+            updateShootingStar(nowMs);
+            updateWhale(nowMs); 
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.life -= p.decay;
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    p.mesh.material.dispose();
+                    particles.splice(i, 1);
+                } else {
+                    p.mesh.position.x += p.vx + Math.sin(time * 2.0 + p.phase) * 0.006;
+                    p.mesh.position.y += p.vy;
+                    p.mesh.position.z += p.vz + Math.cos(time * 1.5 + p.phase) * 0.006;
+                    
+                    if (p.mesh.material.uniforms) {
+                        p.mesh.material.uniforms.opacity.value = p.life;
+                    } else {
+                        p.mesh.material.opacity = p.life;
+                    }
+                    const scale = p.life * 0.8;
+                    p.mesh.scale.set(scale, scale, scale);
+                }
+            }
+
+            for (let i = whaleParticles.length - 1; i >= 0; i--) {
+                let p = whaleParticles[i];
+                p.life -= p.decay;
+                p.vy -= 0.03; 
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    p.mesh.material.dispose();
+                    whaleParticles.splice(i, 1);
+                } else {
+                    p.mesh.position.x += p.vx;
+                    p.mesh.position.y += p.vy;
+                    p.mesh.position.z += p.vz;
+                    p.mesh.material.opacity = p.life * 0.6;
+                    const scale = p.life * 2.5;
+                    p.mesh.scale.set(scale, scale, scale);
+                }
+            }
+
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
