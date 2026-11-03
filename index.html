@@ -519,6 +519,27 @@
             background: rgba(212, 175, 55, 0.1) !important;
             transform: translateX(4px);
         }
+        .item-li .item-count { display:block; margin-top:3px; color:#b9a77d; font-size:0.78rem; letter-spacing:1px; }
+        .item-li.notebook-stage-1 { border-left-color:#b9a77d !important; }
+        .item-li.notebook-stage-2 { border-left-color:#d4af37 !important; }
+        .item-li.notebook-stage-3 { border-left-color:#f0d98a !important; }
+        #item-description {
+            margin-top:18px; padding:16px 17px; min-height:110px;
+            background:rgba(25,14,9,0.38); border:1px solid rgba(212,175,55,0.22);
+            border-radius:5px; color:#e0d8c8; font-family:'Klee One',cursive;
+            font-size:0.9rem; line-height:2; white-space:pre-line;
+            box-shadow:inset 0 0 18px rgba(15,8,4,0.28); transition:all 0.4s;
+        }
+        #item-description .description-progress {
+            display:block; margin-bottom:8px; color:#b9a77d;
+            font-family:'Montserrat',sans-serif; font-size:0.68rem; letter-spacing:1.5px;
+        }
+        #item-description.notebook-stage-1 { border-color:rgba(185,167,125,0.42); }
+        #item-description.notebook-stage-2 { border-color:rgba(212,175,55,0.58); }
+        #item-description.notebook-stage-3 { border-color:rgba(240,217,138,0.8); box-shadow:inset 0 0 22px rgba(212,175,55,0.09),0 0 12px rgba(212,175,55,0.08); }
+        #notebook-container.notebook-page-stage-1 { box-shadow:0 25px 50px rgba(0,0,0,0.9),inset 0 0 50px rgba(30,15,10,0.8),0 0 0 1px rgba(185,167,125,0.12); }
+        #notebook-container.notebook-page-stage-2 { border-color:rgba(212,175,55,0.72); box-shadow:0 25px 50px rgba(0,0,0,0.9),inset 0 0 50px rgba(30,15,10,0.8),0 0 18px rgba(212,175,55,0.12); }
+        #notebook-container.notebook-page-stage-3 { border-color:#b99b50; box-shadow:0 25px 50px rgba(0,0,0,0.9),inset 0 0 50px rgba(30,15,10,0.8),0 0 25px rgba(212,175,55,0.2); }
 
         #preview-area {
             flex: 1.5;
@@ -779,6 +800,7 @@
                 <ul id="notebook-items">
                     <li class="item-li" style="cursor:default;">特別な漂流物にはまだ触れていません。</li>
                 </ul>
+                <div id="item-description">漂流物の名前を選ぶと、出会いの記録がここに綴られます。</div>
             </div>
             <div id="preview-area">
                 <canvas id="preview-canvas"></canvas>
@@ -829,6 +851,9 @@
         // --- 記録ノート用データ ---
         let readMessagesList = [];
         let touchedItemsSet = new Set();
+        let discoveredFloaterInstances = new Set();
+        let floaterEncounterSerial = 0;
+        const FLOATER_DESCRIPTIONS = {"波間を漂う古い流木":{"lines":["どこから流れてきたかわからない、波間を漂う古い流木。","長い時間を海の上で過ごし、角が取れて丸くなったその姿には、","遠い森の記憶が、今も静かに残っているようだ。"],"echoes":["潮風に撫でられながら、今日もゆっくりと流れていく。","かつて根を張っていた場所を、まだ覚えているのだろうか。","波に揺られる音だけが、その長い旅を知っている。","海辺にたどり着く日を、急ぐ様子もなく待っている。","木目の奥には、知らない季節が幾重にも眠っている。","同じ形のものは、ひとつとしてない。","その旅路は、まだ海の途中にある。"]},"海を漂う古いランタン":{"lines":["どこから流れてきたかわからない、海を漂う古いランタン。","長いあいだ暗い海を旅してきたのだろうか、","その小さな灯りは、今も誰かの帰りを待っているようだ。"],"echoes":["灯りが揺れるたび、波の表情も少しだけ変わる。","誰かが最後に火をともした夜は、どんな夜だったのだろう。","遠くから見れば、星のひとつに見えるかもしれない。","暗い海にも、帰る場所を思い出させる光がある。","この灯りを見つけた誰かも、同じ海を眺めているのだろうか。","夜が明けても、旅の記憶は消えない。","小さな光は、今日も静かに海を渡る。"]},"時を刻むアンティーク時計":{"lines":["どこから流れてきたかわからない、時を刻むアンティーク時計。","針が刻んできた時間も、かつて持ち主が眺めていた景色も、","今となっては、波の向こうに置き去りにされてしまった。"],"echoes":["止まった針の先にも、過ぎ去った時間が続いている。","誰かの大切な一日を、そっと覚えているのかもしれない。","海の上では、時間さえ少しゆっくり流れる。","もう鳴らない音を、波だけが聞いている。","針が指す時刻には、どんな思い出があったのだろう。","失われた時間も、ここでは静かに漂っている。","次の時を告げる声は、まだ聞こえない。"]},"ノスタルジックな古いレコード盤":{"lines":["どこから流れてきたかわからない、ノスタルジックな古いレコード盤。","かつて誰かの部屋に音楽を届けていたのだろうか、","溝のひとつひとつに、遠い日の旋律が眠っている。"],"echoes":["針を落とせば、知らない誰かの午後がよみがえるだろうか。","波の音に混じって、かすかな旋律が聞こえる気がする。","音楽を聴いていた部屋には、どんな光が差していたのだろう。","回り続ける円の中に、懐かしい時間が閉じ込められている。","遠い日の歌は、まだ誰かに届くことを待っている。","海は音を運び、記憶を遠くへ連れていく。","静かな針音だけが、旅の続きを奏でている。"]},"波間を漂うガラスの浮き玉":{"lines":["どこから流れてきたかわからない、波間を漂うガラスの浮き玉。","透き通った表面には、空や海の色が淡く映り込み、","まるで海そのものを閉じ込めた、小さな宝石のようだ。"],"echoes":["光の角度が変わるたび、違う色の海を映し出す。","かつて誰かの船を、静かに支えていたのかもしれない。","遠くの空まで、小さな丸い世界に映っている。","波にぶつかっても、その透明な輝きは失われない。","海の色を集めながら、今日も漂い続けている。","手のひらに乗せれば、潮騒まで聞こえてきそうだ。","その中には、まだ見ぬ景色が映っている。"]},"小さな木製の船":{"lines":["どこから流れてきたかわからない、小さな木製の船。","かつて誰かを乗せて、遠い海へ向かっていたのだろうか、","今はただ、静かな波に身を任せて漂っている。"],"echoes":["小さな帆は、まだ行き先を決めていない。","この船が見てきた海は、どんな色をしていたのだろう。","帆を揺らす風だけが、旅の始まりを覚えている。","遠い水平線の向こうにも、静かな海が続いている。","誰かの手で作られた温もりが、木肌に残っている。","波に揺られても、小さな船は進むことをやめない。","いつかまた、どこかの岸辺に出会うだろう。"]},"手紙の入った古いボトル":{"lines":["どこから流れてきたかわからない、手紙の入った古いボトル。","誰かが遠い海の向こうへ届けようとした言葉を抱えたまま、","長い旅の果てに、この静かな海辺へたどり着いた。"],"echoes":["宛名のない手紙にも、届けたい誰かがいたのだろう。","栓の向こうには、まだ読まれていない言葉が眠っている。","この海を渡った時間だけ、手紙にも物語が増えていく。","誰かの願いは、波に消えずに残っているのかもしれない。","遠くへ流した言葉が、思いがけない岸辺に届くこともある。","瓶の内側には、海の青さが淡く映っている。","まだ見ぬ誰かへ、静かな便りを運び続けている。"]}};
         
         let ripples = [];
         
@@ -1292,7 +1317,7 @@
             scene.add(directionalLight);
 
             createRock();
-            createFloaters(12, 80, 12, 4, 4, 6);
+            createFloaters(12, 80, 12, 4, 4, 6, 3);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; 
@@ -1311,10 +1336,84 @@
             setSliderToProgress(17.5 / 24); 
         }
         
-        function updateNotebookUI() {
+        function getFloaterItemName(group) {
+            const d = group.userData || {};
+            if (d.isBottle) return "手紙の入った古いボトル";
+            if (d.isLantern) return "海を漂う古いランタン";
+            if (d.isWatch) return "時を刻むアンティーク時計";
+            if (d.isRecord) return "ノスタルジックな古いレコード盤";
+            if (d.isGlassBall) return "波間を漂うガラスの浮き玉";
+            if (d.isBoat) return "小さな木製の船";
+            return "波間を漂う古い流木";
+        }
+
+        function recordFloaterDiscovery(group) {
+            const itemName = getFloaterItemName(group);
+            if (!group.userData.encounterId) group.userData.encounterId = ++floaterEncounterSerial;
+            const key = itemName + ":" + group.userData.encounterId;
+            if (discoveredFloaterInstances.has(key)) return false;
+            discoveredFloaterInstances.add(key);
+            touchedItemsSet.add(itemName);
+            if (!floaterDiscovery[itemName]) floaterDiscovery[itemName] = { count: 0 };
+            floaterDiscovery[itemName].count += 1;
+            updateNotebookUI(itemName);
+            return true;
+        }
+
+        function renderItemDescription(itemName) {
+            const panel = document.getElementById('item-description');
+            const page = document.getElementById('notebook-container');
+            if (!panel || !itemName) return;
+            const data = FLOATER_DESCRIPTIONS[itemName];
+            const count = floaterDiscovery[itemName] ? floaterDiscovery[itemName].count : 0;
+            const stage = count >= 10 ? 3 : count >= 7 ? 2 : count >= 4 ? 1 : 0;
+            panel.className = stage ? 'notebook-stage-' + stage : '';
+            if (page) page.className = 'paper-modal notebook-page-stage-' + stage;
+            panel.textContent = '';
+
+            const progress = document.createElement('span');
+            progress.className = 'description-progress';
+            progress.textContent = '出会い ' + count + ' 回  ·  記録 ' + Math.min(count, 3) + '/3';
+            panel.appendChild(progress);
+
+            if (data) {
+                for (let i = 0; i < Math.min(count, 3); i++) {
+                    const line = document.createElement('div');
+                    line.textContent = data.lines[i];
+                    panel.appendChild(line);
+                }
+                if (count >= 4) {
+                    const echoCount = Math.min(count - 3, data.echoes.length);
+                    for (let i = 0; i < echoCount; i++) {
+                        const echo = document.createElement('div');
+                        echo.textContent = data.echoes[i];
+                        echo.style.marginTop = i === 0 ? '10px' : '2px';
+                        echo.style.color = '#d6c59e';
+                        panel.appendChild(echo);
+                    }
+                }
+                if (count > 3 + data.echoes.length) {
+                    const completed = document.createElement('div');
+                    completed.textContent = 'このページに、たくさんの出会いが綴られました。';
+                    completed.style.marginTop = '10px';
+                    completed.style.color = '#b9a77d';
+                    panel.appendChild(completed);
+                }
+            }
+            if (stage > 0) {
+                const ornament = document.createElement('div');
+                ornament.textContent = stage === 1 ? '—  ✧  —' : stage === 2 ? '—  ✧  ❖  ✧  —' : '❖  ✧  ❖  ✧  ❖';
+                ornament.style.textAlign = 'center';
+                ornament.style.marginTop = '12px';
+                ornament.style.color = '#d4af37';
+                ornament.style.letterSpacing = '3px';
+                panel.appendChild(ornament);
+            }
+        }
+
+        function updateNotebookUI(selectedItem = null) {
             const msgUl = document.getElementById('notebook-messages');
             const itemsUl = document.getElementById('notebook-items');
-            
             if (msgUl) {
                 msgUl.innerHTML = '';
                 if (readMessagesList.length === 0) {
@@ -1327,31 +1426,37 @@
                     }
                 }
             }
-            
-            if (itemsUl) {
-                itemsUl.innerHTML = '';
-                if (touchedItemsSet.size === 0) {
-                    itemsUl.innerHTML = '<li class="item-li" style="cursor:default;">特別な漂流物にはまだ触れていません。</li>';
-                    showPreviewModel(""); // プレビューをクリア
-                } else {
-                    touchedItemsSet.forEach(item => {
-                        const li = document.createElement('li');
-                        li.className = 'item-li';
-                        li.innerText = item;
-                        li.addEventListener('click', () => {
-                            showPreviewModel(item);
-                            // 選択状態のスタイリング
-                            document.querySelectorAll('.item-li').forEach(el => el.style.background = '');
-                            li.style.background = 'rgba(212, 175, 55, 0.2)';
-                        });
-                        itemsUl.appendChild(li);
-                    });
-                    
-                    // リストの最初の一つを自動選択
-                    const firstLi = itemsUl.querySelector('.item-li');
-                    if (firstLi) firstLi.click();
-                }
+            if (!itemsUl) return;
+            itemsUl.innerHTML = '';
+            if (touchedItemsSet.size === 0) {
+                itemsUl.innerHTML = '<li class="item-li" style="cursor:default;">特別な漂流物にはまだ触れていません。</li>';
+                showPreviewModel("");
+                const panel = document.getElementById('item-description');
+                if (panel) panel.textContent = "漂流物の名前を選ぶと、出会いの記録がここに綴られます。";
+                return;
             }
+            const names = Array.from(touchedItemsSet);
+            names.forEach(item => {
+                const li = document.createElement('li');
+                const count = floaterDiscovery[item] ? floaterDiscovery[item].count : 0;
+                const stage = count >= 10 ? 3 : count >= 7 ? 2 : count >= 4 ? 1 : 0;
+                li.className = 'item-li' + (stage ? ' notebook-stage-' + stage : '');
+                li.textContent = item;
+                const countLabel = document.createElement('span');
+                countLabel.className = 'item-count';
+                countLabel.textContent = '出会い ' + count + ' 回';
+                li.appendChild(countLabel);
+                li.addEventListener('click', () => {
+                    showPreviewModel(item);
+                    document.querySelectorAll('.item-li').forEach(el => el.style.background = '');
+                    li.style.background = 'rgba(212, 175, 55, 0.2)';
+                    renderItemDescription(item);
+                });
+                itemsUl.appendChild(li);
+            });
+            const chosen = selectedItem && touchedItemsSet.has(selectedItem) ? selectedItem : names[0];
+            const selectedLi = Array.from(itemsUl.children).find(li => li.firstChild && li.firstChild.textContent === chosen);
+            if (selectedLi) selectedLi.click();
         }
 
         // --- プレビュー用3D空間の初期化 ---
@@ -1673,6 +1778,26 @@
             return group;
         }
 
+        function createPreviewBottle() {
+            const group = new THREE.Group();
+            const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.25, 20),
+                new THREE.MeshPhysicalMaterial({ color: 0x9bc4c8, transmission: 0.72, transparent: true, opacity: 0.55, roughness: 0.12 }));
+            glass.rotation.z = Math.PI / 2;
+            group.add(glass);
+            const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.28, 12),
+                new THREE.MeshStandardMaterial({ color: 0x9a6841, roughness: 0.9 }));
+            cork.rotation.z = Math.PI / 2;
+            cork.position.x = 0.73;
+            group.add(cork);
+            const letter = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.42, 12),
+                new THREE.MeshStandardMaterial({ color: 0xf2e3c6, roughness: 0.8 }));
+            letter.rotation.z = -Math.PI / 2;
+            letter.position.x = -0.02;
+            group.add(letter);
+            group.scale.setScalar(2.0);
+            return group;
+        }
+
         function showPreviewModel(itemName) {
             if(previewModel) {
                 previewScene.remove(previewModel);
@@ -1685,6 +1810,7 @@
             else if(itemName === "ノスタルジックな古いレコード盤") previewModel = createPreviewRecord();
             else if(itemName === "波間を漂うガラスの浮き玉") previewModel = createPreviewGlassBall();
             else if(itemName === "小さな木製の船") previewModel = createPreviewBoat();
+            else if(itemName === "手紙の入った古いボトル") previewModel = createPreviewBottle();
 
             const canvas = document.getElementById('preview-canvas');
             const text = document.getElementById('preview-text');
@@ -2006,6 +2132,7 @@
                 const intersects = raycaster.intersectObjects(group.children, true);
                 
                 if (intersects.length > 0) {
+                    recordFloaterDiscovery(group);
                     if (group.userData.isBottle) {
                         showMessage(group.userData.message);
                         group.userData.isSinking = true; 
@@ -2024,32 +2151,26 @@
                         group.userData.glowStartTime = performance.now();
                         group.userData.isGlowing = true;
                         spawnLanternParticles(group.position);
-                        touchedItemsSet.add("海を漂う古いランタン");
                     } else if (group.userData.isWatch) {
                         playWatchSoundAndShowTime();
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.15;
-                        touchedItemsSet.add("時を刻むアンティーク時計");
                     } else if (group.userData.isRecord) {
                         playRecordSound();
                         spawnRipple(group.position);
                         group.userData.rotSpeed += 0.2; 
-                        touchedItemsSet.add("ノスタルジックな古いレコード盤");
                     } else if (group.userData.isGlassBall) {
                         playGlassSound();
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.3; 
-                        touchedItemsSet.add("波間を漂うガラスの浮き玉");
                     } else if (group.userData.isBoat) {
                         showMessage("小さな木の船が、静かな波に揺られている。\n\nこの船にも、まだ見ぬ海の向こうへ続く旅があるのだろう。", false);
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.04;
-                        touchedItemsSet.add("小さな木製の船");
                     } else {
                         group.userData.isPushed = true;
                         group.userData.pushStartTime = performance.now();
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.1; 
-                        touchedItemsSet.add("波間を漂う古い流木");
                     }
                     break;
                 }
@@ -2224,6 +2345,7 @@
                 phase: Math.random() * Math.PI * 2,
                 bobHeight: 0.07 + Math.random() * 0.03,
                 isBottle: true,
+                encounterId: null,
                 message: message || PRESET_MESSAGES[Math.floor(Math.random() * PRESET_MESSAGES.length)],
                 isSinking: false
             };
@@ -2274,7 +2396,7 @@
             }
         }
 
-        function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15, boatCount = 2) {
+        function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15, boatCount = 3) {
             floaters = [];
 
             for(let i=0; i<bottleCount; i++) {
@@ -3497,6 +3619,7 @@
                     f.position.z += f.userData.vz;
                     
                     if (f.position.x < -150) { 
+                        f.userData.encounterId = null;
                         f.position.x = 150; 
                         f.position.z = (Math.random() - 0.5) * 200 - 20; 
                         f.userData.vx = f.userData.baseSpeedX;
@@ -3504,6 +3627,7 @@
                         f.userData.rotSpeed = f.userData.baseRotSpeed;
                     }
                     if (f.position.z > 80) { 
+                        f.userData.encounterId = null;
                         f.position.z = -120; 
                         f.position.x = (Math.random() - 0.5) * 300; 
                         f.userData.vx = f.userData.baseSpeedX;
@@ -3530,6 +3654,7 @@
                             f.userData.vz = f.userData.baseSpeedZ;
                             
                             f.userData.message = PRESET_MESSAGES[Math.floor(Math.random() * PRESET_MESSAGES.length)];
+                            f.userData.encounterId = null;
 
                             const cork = f.getObjectByName("cork");
                             const letter = f.getObjectByName("letter");
