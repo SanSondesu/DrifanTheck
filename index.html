@@ -1244,8 +1244,8 @@
             water = new THREE.Water(
                 waterGeometry,
                 {
-                    textureWidth: 512,
-                    textureHeight: 512,
+                    textureWidth: 256,
+                    textureHeight: 256,
                     waterNormals: new THREE.TextureLoader().load(
                         'https://threejs.org/examples/textures/waternormals.jpg',
                         function (texture) {
@@ -2440,62 +2440,74 @@
                 side: THREE.FrontSide
             });
             
-            const glowGeo = new THREE.SphereGeometry(3.2, 32, 32);
+            const glowGeo = new THREE.SphereGeometry(3.2, 16, 16);
+
+            // ランタン全体でGeometryとMaterialを共有し、重複生成を避ける
+            const lanternMetalMat = new THREE.MeshStandardMaterial({
+                color: 0x15181a, roughness: 0.7, metalness: 0.3, flatShading: true
+            });
+            const lanternGlassMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff, transparent: true, opacity: 0.15,
+                roughness: 0.02, metalness: 0.9, side: THREE.DoubleSide
+            });
+            const lanternCandleMat = new THREE.MeshBasicMaterial({ color: 0xffb766 });
+            const lanternBaseGeo = new THREE.BoxGeometry(0.6, 0.08, 0.6);
+            const lanternGlassGeo = new THREE.BoxGeometry(0.52, 0.72, 0.52);
+            const lanternPillarGeo = new THREE.BoxGeometry(0.04, 0.7, 0.04);
+            const lanternRoofBaseGeo = new THREE.BoxGeometry(0.66, 0.04, 0.66);
+            const lanternRoofGeo = new THREE.CylinderGeometry(0.08, 0.33, 0.4, 4);
+            lanternRoofGeo.rotateY(Math.PI / 4);
+            const lanternCapGeo = new THREE.BoxGeometry(0.16, 0.08, 0.16);
+            const lanternRingGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
+            const lanternCandleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
 
             for(let i=0; i<lanternCount; i++) {
                 const lanternGroup = new THREE.Group();
-                const metalMat = new THREE.MeshStandardMaterial({ 
-                    color: 0x15181a, roughness: 0.7, metalness: 0.3, flatShading: true
-                });
 
-                const baseGeo = new THREE.BoxGeometry(0.6, 0.08, 0.6);
-                const base = new THREE.Mesh(baseGeo, metalMat);
+                const baseGeo = lanternBaseGeo;
+                const base = new THREE.Mesh(baseGeo, lanternMetalMat);
                 base.position.y = 0.04;
                 lanternGroup.add(base);
 
-                const glassGeo = new THREE.BoxGeometry(0.52, 0.72, 0.52);
-                const glassMat = new THREE.MeshStandardMaterial({
-                    color: 0xffffff, transparent: true, opacity: 0.15,   
-                    roughness: 0.02, metalness: 0.9, side: THREE.DoubleSide
-                });
+                const glassGeo = lanternGlassGeo;
+                const glassMat = lanternGlassMat;
                 const glass = new THREE.Mesh(glassGeo, glassMat);
                 glass.position.y = 0.43; 
                 lanternGroup.add(glass);
 
-                const pillarGeo = new THREE.BoxGeometry(0.04, 0.7, 0.04);
+                const pillarGeo = lanternPillarGeo;
                 const positions = [
                     [-0.28, 0.28], [0.28, 0.28], 
                     [-0.28, -0.28], [0.28, -0.28]
                 ];
                 positions.forEach(pos => {
-                    const pillar = new THREE.Mesh(pillarGeo, metalMat);
+                    const pillar = new THREE.Mesh(pillarGeo, lanternMetalMat);
                     pillar.position.set(pos[0], 0.43, pos[1]);
                     lanternGroup.add(pillar);
                 });
 
-                const roofBaseGeo = new THREE.BoxGeometry(0.66, 0.04, 0.66);
-                const roofBase = new THREE.Mesh(roofBaseGeo, metalMat);
+                const roofBaseGeo = lanternRoofBaseGeo;
+                const roofBase = new THREE.Mesh(roofBaseGeo, lanternMetalMat);
                 roofBase.position.y = 0.8;
                 lanternGroup.add(roofBase);
 
-                const roofGeo = new THREE.CylinderGeometry(0.08, 0.33, 0.4, 4);
-                roofGeo.rotateY(Math.PI / 4); 
-                const roof = new THREE.Mesh(roofGeo, metalMat);
+                const roofGeo = lanternRoofGeo; 
+                const roof = new THREE.Mesh(roofGeo, lanternMetalMat);
                 roof.position.y = 1.02;
                 lanternGroup.add(roof);
 
-                const capGeo = new THREE.BoxGeometry(0.16, 0.08, 0.16);
-                const cap = new THREE.Mesh(capGeo, metalMat);
+                const capGeo = lanternCapGeo;
+                const cap = new THREE.Mesh(capGeo, lanternMetalMat);
                 cap.position.y = 1.26;
                 lanternGroup.add(cap);
 
-                const ringGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
-                const ring = new THREE.Mesh(ringGeo, metalMat);
+                const ringGeo = lanternRingGeo;
+                const ring = new THREE.Mesh(ringGeo, lanternMetalMat);
                 ring.position.y = 1.45;
                 lanternGroup.add(ring);
 
-                const candleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
-                const candleMat = new THREE.MeshBasicMaterial({ color: 0xffb766 });
+                const candleGeo = lanternCandleGeo;
+                const candleMat = lanternCandleMat;
                 const candle = new THREE.Mesh(candleGeo, candleMat);
                 candle.position.y = 0.25;
                 lanternGroup.add(candle);
@@ -2764,7 +2776,7 @@
 
         function createStars() {
             const starsGeometry = new THREE.BufferGeometry();
-            const starsCount = 15000; 
+            const starsCount = 10000; 
             const posArray = new Float32Array(starsCount * 3);
             const colorArray = new Float32Array(starsCount * 3);
             const sizeArray = new Float32Array(starsCount);
