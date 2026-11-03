@@ -846,6 +846,7 @@
 
         let watchSoundInterval;
 
+        let currentNightRatio = 0;
         let currentHours = 12;
         let currentMinutes = 0;
         let isHourMode = true;
@@ -2423,6 +2424,7 @@
                 fragmentShader: `
                     varying vec3 vNormal;
                     varying vec3 vViewPosition;
+                    uniform float glowOpacity;
                     void main() {
                         vec3 normal = normalize(vNormal);
                         vec3 viewDir = normalize(vViewPosition);
@@ -2430,9 +2432,10 @@
                         float intensity = max(dot(normal, viewDir), 0.0);
                         intensity = pow(intensity, 2.5);
                         vec3 color = vec3(1.0, 0.45, 0.05);
-                        gl_FragColor = vec4(color, intensity * 0.3);
+                        gl_FragColor = vec4(color, intensity * 0.3 * glowOpacity);
                     }
                 `,
+                uniforms: { glowOpacity: { value: 1.0 } },
                 blending: THREE.AdditiveBlending, 
                 transparent: true,
                 depthWrite: false,
@@ -2517,7 +2520,10 @@
                 pLight.name = "pLight";
                 lanternGroup.add(pLight);
 
-                const glow = new THREE.Mesh(glowGeo, glowMat);
+                const isNightExtra = i >= lanternCount - 2;
+                const individualGlowMat = isNightExtra ? glowMat.clone() : glowMat;
+                if (isNightExtra) individualGlowMat.uniforms.glowOpacity.value = 0;
+                const glow = new THREE.Mesh(glowGeo, individualGlowMat);
                 glow.position.y = 0.4;
                 glow.name = "glow";
                 glow.frustumCulled = false; 
@@ -2540,7 +2546,7 @@
                     bobHeight: 0.03 + Math.random() * 0.02,
                     isBottle: false,
                     isLantern: true,
-                    isNightExtra: i >= lanternCount - 2
+                    isNightExtra: isNightExtra
                 };
                 scene.add(lanternGroup);
                 floaters.push(lanternGroup);
@@ -2661,7 +2667,7 @@
                 const hole = new THREE.Mesh(holeGeo, holeMat);
                 recordGroup.add(hole);
 
-                recordGroup.scale.set(1.5, 1.5, 1.5);
+                recordGroup.scale.set(2.0, 2.0, 2.0);
                 recordGroup.position.x = (Math.random() - 0.5) * 300;
                 recordGroup.position.z = (Math.random() - 0.5) * 200 - 20;
                 recordGroup.position.y = 0;
@@ -3308,15 +3314,7 @@
             
             let dayRatio = THREE.MathUtils.clamp((sunElevation + 15) / 30, 0, 1);
             let nightRatio = 1.0 - dayRatio;
-
-            // 夜が深まると、追加のランタン2個が海に現れる
-            if (floaters) {
-                floaters.forEach(f => {
-                    if (f.userData && f.userData.isNightExtra) {
-                        f.visible = nightRatio > 0.55;
-                    }
-                });
-            }
+            currentNightRatio = nightRatio;
             
             let sunsetRaw = THREE.MathUtils.clamp(1.0 - Math.abs(sunElevation - 5) / 35.0, 0, 1);
             let sunsetRatio = Math.pow(sunsetRaw, 1.5);
@@ -3548,7 +3546,10 @@
                     }
                 } else if (f.userData.isLantern) {
                     let glowScale = 1.0;
-                    let lightIntensity = 0.5;
+                    const nightLightFactor = f.userData.isNightExtra
+                        ? THREE.MathUtils.smoothstep(currentNightRatio, 0.25, 0.75)
+                        : 1.0;
+                    let lightIntensity = 0.5 * nightLightFactor;
                     
                     if (f.userData.isGlowing) {
                         const elapsed = nowMs - f.userData.glowStartTime;
@@ -3566,7 +3567,12 @@
                     const pLight = f.getObjectByName("pLight");
                     const glow = f.getObjectByName("glow");
                     if (pLight) pLight.intensity = lightIntensity;
-                    if (glow) glow.scale.set(glowScale, glowScale, glowScale);
+                    if (glow) {
+                        glow.scale.set(glowScale, glowScale, glowScale);
+                        if (f.userData.isNightExtra && glow.material.uniforms && glow.material.uniforms.glowOpacity) {
+                            glow.material.uniforms.glowOpacity.value = nightLightFactor;
+                        }
+                    }
 
                     f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight;
                     f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
