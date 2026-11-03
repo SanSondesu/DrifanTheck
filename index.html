@@ -1558,41 +1558,84 @@
             return group;
         }
 
-        function createPreviewBoat() {
-            const group = new THREE.Group();
-            const woodMat = new THREE.MeshStandardMaterial({ color: 0x765033, roughness: 0.88, flatShading: true });
-            const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x4b3021, roughness: 0.92, flatShading: true });
-            const hull = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.28, 0.78), woodMat);
-            hull.position.y = -0.08;
-            group.add(hull);
-            const bow = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.9, 4), woodMat);
-            bow.rotation.z = -Math.PI / 2;
-            bow.rotation.y = Math.PI / 4;
-            bow.position.x = 1.25;
-            bow.position.y = -0.08;
-            group.add(bow);
-            const stern = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.38, 0.82), darkWoodMat);
-            stern.position.x = -1.0;
-            group.add(stern);
-            for (let i = -1; i <= 1; i++) {
-                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.7), darkWoodMat);
-                seat.position.set(i * 0.52, 0.12, 0);
-                group.add(seat);
+        function createBoatModel(scale = 1) {
+            const boat = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x765033, roughness: 0.92, flatShading: true });
+            const edgeMat = new THREE.MeshStandardMaterial({ color: 0x4b3021, roughness: 0.95, flatShading: true });
+            const sailMat = new THREE.MeshStandardMaterial({ color: 0xe9dfc9, roughness: 0.98, side: THREE.DoubleSide });
+            const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8b765c, roughness: 1.0 });
+
+            // 船底は先端を絞った木製の船形に
+            const hullShape = new THREE.Shape();
+            hullShape.moveTo(-1.25, -0.42);
+            hullShape.lineTo(0.82, -0.42);
+            hullShape.lineTo(1.48, 0);
+            hullShape.lineTo(0.82, 0.42);
+            hullShape.lineTo(-1.25, 0.42);
+            hullShape.closePath();
+            const hull = new THREE.Mesh(new THREE.ExtrudeGeometry(hullShape, {
+                depth: 0.24, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 0.035, bevelThickness: 0.035
+            }), woodMat);
+            hull.rotation.x = -Math.PI / 2;
+            hull.position.y = -0.12;
+            boat.add(hull);
+
+            // 船べりと船尾板
+            for (const side of [-1, 1]) {
+                const rail = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.09, 0.07), edgeMat);
+                rail.position.set(-0.12, 0.04, side * 0.36);
+                boat.add(rail);
             }
-            const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.5, 8), darkWoodMat);
-            mast.position.set(-0.1, 0.78, 0);
-            group.add(mast);
-            const sail = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.78, 1.0),
-                new THREE.MeshStandardMaterial({ color: 0xe9dfc9, roughness: 0.95, side: THREE.DoubleSide })
-            );
-            sail.position.set(0.28, 0.86, 0);
-            sail.rotation.y = Math.PI / 2;
-            group.add(sail);
-            group.scale.set(1.6, 1.6, 1.6);
-            return group;
+            const stern = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.28, 0.78), edgeMat);
+            stern.position.set(-1.18, 0.02, 0);
+            boat.add(stern);
+
+            // 座席
+            for (const x of [-0.78, -0.12, 0.5]) {
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.07, 0.62), edgeMat);
+                seat.position.set(x, 0.09, 0);
+                boat.add(seat);
+            }
+
+            // マストは船体に差し込み、帆の縦辺をマストにぴったり合わせる
+            const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 1.75, 8), edgeMat);
+            mast.position.set(-0.18, 0.88, 0);
+            boat.add(mast);
+
+            const sailShape = new THREE.Shape();
+            sailShape.moveTo(0.015, 0.12);
+            sailShape.lineTo(0.015, 1.62);
+            sailShape.lineTo(0.92, 0.34);
+            sailShape.closePath();
+            const sail = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), sailMat);
+            sail.position.set(-0.18, 0.02, 0.025);
+            boat.add(sail);
+
+            // マスト先端の小さな三角旗。旗の根元も棒に接続
+            const flagShape = new THREE.Shape();
+            flagShape.moveTo(0.015, 0);
+            flagShape.lineTo(0.015, 0.28);
+            flagShape.lineTo(0.42, 0.19);
+            flagShape.closePath();
+            const flag = new THREE.Mesh(new THREE.ShapeGeometry(flagShape), new THREE.MeshStandardMaterial({
+                color: 0x9b5540, roughness: 0.95, side: THREE.DoubleSide
+            }));
+            flag.position.set(-0.18, 1.73, 0.035);
+            boat.add(flag);
+
+            // 控えめな帆の支え綱
+            const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.25, 5), ropeMat);
+            rope.position.set(0.24, 0.72, -0.015);
+            rope.rotation.z = -0.42;
+            boat.add(rope);
+
+            boat.scale.setScalar(scale);
+            return boat;
         }
 
+        function createPreviewBoat() {
+            return createBoatModel(1.6);
+        }
         function createPreviewGlassBall() {
             const group = new THREE.Group();
             
@@ -2265,35 +2308,66 @@
             for (let i = 0; i < woodCount; i++) {
                 const floaterGroup = new THREE.Group();
                 const typeChoice = Math.random();
-
                 const woodMaterial = new THREE.MeshStandardMaterial({
-                    color: new THREE.Color().setHSL(0.08, 0.35 + Math.random() * 0.2, 0.20 + Math.random() * 0.15),
-                    roughness: 0.9,
-                    metalness: 0.05,
+                    color: new THREE.Color().setHSL(0.075 + Math.random() * 0.025, 0.28 + Math.random() * 0.18, 0.19 + Math.random() * 0.13),
+                    roughness: 0.94,
+                    metalness: 0.02,
                     flatShading: true
                 });
 
-                if (typeChoice < 0.4) {
-                    const angleY = (0.4 + Math.random() * 0.45) * (Math.random() < 0.5 ? 1 : -1);
-                    const angleZ = (Math.random() - 0.5) * 0.2;
-                    const { group } = createBentSegment(woodMaterial, 0.20, 0.15, 0.08, 2.6, 2.2, angleY, angleZ);
-                    floaterGroup.add(group);
-                } else if (typeChoice < 0.75) {
-                    const angleY = (0.35 + Math.random() * 0.4) * (Math.random() < 0.5 ? 1 : -1);
-                    const { group, joint } = createBentSegment(woodMaterial, 0.26, 0.18, 0.10, 3.0, 2.4, angleY, 0.1);
-                    
-                    const subGeo = new THREE.CylinderGeometry(0.04, 0.10, 1.8, 6);
-                    const subMesh = new THREE.Mesh(subGeo, woodMaterial);
-                    subMesh.rotation.z = -Math.PI / 2;
-                    subMesh.rotation.y = -angleY * 1.4;
-                    subMesh.position.x = 0.9;
-                    joint.add(subMesh);
+                const addLog = (parent, length, radius, x, y, z, taper = 0.72) => {
+                    const geo = new THREE.CylinderGeometry(radius * taper, radius, length, 7);
+                    const mesh = new THREE.Mesh(geo, woodMaterial);
+                    mesh.rotation.z = Math.PI / 2;
+                    mesh.position.set(x, y, z);
+                    parent.add(mesh);
+                    return mesh;
+                };
 
-                    floaterGroup.add(group);
+                if (typeChoice < 0.22) {
+                    // 細長い流木
+                    addLog(floaterGroup, 5.8 + Math.random() * 2.8, 0.11 + Math.random() * 0.06, 0, 0, 0, 0.5);
+                    if (Math.random() < 0.55) addLog(floaterGroup, 1.8, 0.055, 0.7, 0.18, 0.12, 0.35);
+                    floaterGroup.scale.set(1, 0.9, 0.9);
+                } else if (typeChoice < 0.42) {
+                    // 小さく短い枝
+                    addLog(floaterGroup, 1.5 + Math.random() * 1.0, 0.13 + Math.random() * 0.06, 0, 0, 0, 0.55);
+                    if (Math.random() < 0.65) {
+                        const twig = addLog(floaterGroup, 1.0 + Math.random() * 0.6, 0.065, 0.15, 0.28, 0, 0.35);
+                        twig.rotation.z = Math.PI / 2 - 0.55;
+                    }
+                    floaterGroup.scale.setScalar(0.72 + Math.random() * 0.18);
+                } else if (typeChoice < 0.64) {
+                    // 太くて大きな丸太
+                    addLog(floaterGroup, 3.2 + Math.random() * 1.8, 0.32 + Math.random() * 0.12, 0, 0, 0, 0.78);
+                    addLog(floaterGroup, 1.2, 0.12, -0.35, 0.28, 0.08, 0.5);
+                    floaterGroup.scale.setScalar(1.15 + Math.random() * 0.25);
+                } else if (typeChoice < 0.84) {
+                    // 二股・三股に分かれた枝
+                    addLog(floaterGroup, 3.5 + Math.random() * 1.4, 0.22, -0.1, 0, 0, 0.62);
+                    const branchA = addLog(floaterGroup, 2.0, 0.105, 0.75, 0.48, 0, 0.45);
+                    branchA.rotation.z = Math.PI / 2 - 0.58;
+                    const branchB = addLog(floaterGroup, 1.65, 0.09, -0.55, -0.35, 0.05, 0.4);
+                    branchB.rotation.z = Math.PI / 2 + 0.65;
                 } else {
-                    const angleY = (0.25 + Math.random() * 0.35) * (Math.random() < 0.5 ? 1 : -1);
-                    const { group } = createBentSegment(woodMaterial, 0.40, 0.30, 0.18, 3.4, 2.8, angleY, 0.05);
+                    // これまでの雰囲気に近い、標準的な曲がり枝
+                    const angleY = (0.3 + Math.random() * 0.55) * (Math.random() < 0.5 ? 1 : -1);
+                    const { group, joint } = createBentSegment(
+                        woodMaterial,
+                        0.2 + Math.random() * 0.08,
+                        0.14 + Math.random() * 0.06,
+                        0.07 + Math.random() * 0.04,
+                        2.2 + Math.random() * 1.0,
+                        1.8 + Math.random() * 1.0,
+                        angleY,
+                        (Math.random() - 0.5) * 0.22
+                    );
                     floaterGroup.add(group);
+                    if (Math.random() < 0.6) {
+                        const twig = addLog(joint, 1.3, 0.07, 0.5, 0.22, 0, 0.35);
+                        twig.rotation.z = Math.PI / 2 - 0.5;
+                    }
+                    floaterGroup.scale.setScalar(0.85 + Math.random() * 0.35);
                 }
 
                 floaterGroup.position.x = (Math.random() - 0.5) * 300;
@@ -2317,7 +2391,6 @@
                 scene.add(floaterGroup);
                 floaters.push(floaterGroup);
             }
-
             const glowMat = new THREE.ShaderMaterial({
                 vertexShader: `
                     varying vec3 vNormal;
@@ -2628,43 +2701,9 @@
                 floaters.push(ballGroup);
             }
 
-            // 小さな木製の船：控えめな数だけ海面を漂わせる
-            const boatWoodMat = new THREE.MeshStandardMaterial({ color: 0x765033, roughness: 0.9, flatShading: true });
-            const boatDarkMat = new THREE.MeshStandardMaterial({ color: 0x4b3021, roughness: 0.92, flatShading: true });
-            const sailMat = new THREE.MeshStandardMaterial({ color: 0xe9dfc9, roughness: 0.95, side: THREE.DoubleSide });
+            // 小さな木製の船：素朴な帆船を少数だけ漂わせる
             for (let i = 0; i < boatCount; i++) {
-                const boat = new THREE.Group();
-
-                const hull = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.28, 0.78), boatWoodMat);
-                hull.position.y = -0.08;
-                boat.add(hull);
-
-                const bow = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.9, 4), boatWoodMat);
-                bow.rotation.z = -Math.PI / 2;
-                bow.rotation.y = Math.PI / 4;
-                bow.position.set(1.25, -0.08, 0);
-                boat.add(bow);
-
-                const stern = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.38, 0.82), boatDarkMat);
-                stern.position.x = -1.0;
-                boat.add(stern);
-
-                for (let seatIndex = -1; seatIndex <= 1; seatIndex++) {
-                    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.7), boatDarkMat);
-                    seat.position.set(seatIndex * 0.52, 0.12, 0);
-                    boat.add(seat);
-                }
-
-                const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.5, 8), boatDarkMat);
-                mast.position.set(-0.1, 0.78, 0);
-                boat.add(mast);
-
-                const sail = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 1.0), sailMat);
-                sail.position.set(0.28, 0.86, 0);
-                sail.rotation.y = Math.PI / 2;
-                boat.add(sail);
-
-                boat.scale.set(1.25, 1.25, 1.25);
+                const boat = createBoatModel(1.25);
                 boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
                 boat.rotation.y = Math.random() * Math.PI * 2;
                 boat.userData = {
