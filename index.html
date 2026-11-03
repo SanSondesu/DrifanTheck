@@ -1017,22 +1017,27 @@
                 audioCtx.resume().catch(e => console.log("Audio resume prevented:", e));
             }
             const now = audioCtx.currentTime;
-            
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1000 + Math.random() * 500, now);
-            
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 3.0); 
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start(now);
-            osc.stop(now + 3.0);
+            // A soft, layered bell tone with a complete natural decay.
+            const partials = [
+                { frequency: 1046.5, gain: 0.105, decay: 3.15, delay: 0.00 },
+                { frequency: 1568.0, gain: 0.048, decay: 2.65, delay: 0.018 },
+                { frequency: 2093.0, gain: 0.024, decay: 3.55, delay: 0.042 }
+            ];
+
+            partials.forEach(partial => {
+                const start = now + partial.delay;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(partial.frequency * (0.997 + Math.random() * 0.006), start);
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.linearRampToValueAtTime(partial.gain, start + 0.014);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + partial.decay);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(start);
+                osc.stop(start + partial.decay + 0.14);
+            });
         }
 
         function playWhaleSound() {
@@ -1164,28 +1169,30 @@
         function playGlassSound() {
             if(!audioCtx || audioCtx.state !== 'running') return;
             const now = audioCtx.currentTime;
-            
+
             showMessage("波に揺られて、\nガラスの浮き玉が「カラン…」と涼しげな音を立てた。");
 
-            const freqs = [2200, 2600]; 
-            let startTime = now;
-            
-            freqs.forEach((freq, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq + (Math.random()*50), startTime + i*0.06);
-                
-                gain.gain.setValueAtTime(0, startTime + i*0.06);
-                gain.gain.linearRampToValueAtTime(0.12, startTime + i*0.06 + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, startTime + i*0.06 + 0.6);
-                
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                
-                osc.start(startTime + i*0.06);
-                osc.stop(startTime + i*0.06 + 0.6);
+            // Two light glass contacts: a rounded "ka" followed by a brighter "ran".
+            const strikes = [
+                { delay: 0.00, frequencies: [880, 1320, 1760], level: 0.070, decay: 0.82 },
+                { delay: 0.085, frequencies: [1046.5, 1568, 2093], level: 0.058, decay: 1.12 }
+            ];
+
+            strikes.forEach(strike => {
+                strike.frequencies.forEach((frequency, index) => {
+                    const start = now + strike.delay + index * 0.008;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(frequency * (0.996 + Math.random() * 0.008), start);
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.linearRampToValueAtTime(strike.level / (1 + index * 0.65), start + 0.009);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + strike.decay * (1 + index * 0.12));
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(start);
+                    osc.stop(start + strike.decay * (1 + index * 0.12) + 0.12);
+                });
             });
         }
 
