@@ -1172,10 +1172,11 @@
 
             showMessage("波に揺られて、\nガラスの浮き玉が「カラン…」と涼しげな音を立てた。");
 
-            // Two light glass contacts: a rounded "ka" followed by a brighter "ran".
+            // Two soft, consonant C-major glass chimes: "ta-tan...".
+            // Keep every partial at or below 3000 Hz for a gentler, less piercing tone.
             const strikes = [
-                { delay: 0.00, frequencies: [2000, 2600, 3200], level: 0.052, decay: 0.82 },
-                { delay: 0.085, frequencies: [2400, 3000, 3600], level: 0.045, decay: 1.12 }
+                { delay: 0.00, frequencies: [1046.5, 1318.5, 1568, 2093], level: 0.048, decay: 0.88 },
+                { delay: 0.065, frequencies: [1318.5, 1568, 2093, 2637], level: 0.043, decay: 1.16 }
             ];
 
             strikes.forEach(strike => {
@@ -1184,7 +1185,7 @@
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(frequency * (0.996 + Math.random() * 0.008), start);
+                    osc.frequency.setValueAtTime(frequency * (0.999 + Math.random() * 0.002), start);
                     gain.gain.setValueAtTime(0.0001, start);
                     gain.gain.linearRampToValueAtTime(strike.level / (1 + index * 0.65), start + 0.009);
                     gain.gain.exponentialRampToValueAtTime(0.0001, start + strike.decay * (1 + index * 0.12));
