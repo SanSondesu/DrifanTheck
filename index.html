@@ -1291,7 +1291,7 @@
             scene.add(directionalLight);
 
             createRock();
-            createFloaters(12, 100, 10, 4, 4, 6);
+            createFloaters(12, 80, 12, 4, 4, 6);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; 
@@ -2539,7 +2539,8 @@
                     phase: Math.random() * Math.PI * 2,
                     bobHeight: 0.03 + Math.random() * 0.02,
                     isBottle: false,
-                    isLantern: true
+                    isLantern: true,
+                    isNightExtra: i >= lanternCount - 2
                 };
                 scene.add(lanternGroup);
                 floaters.push(lanternGroup);
@@ -3307,6 +3308,15 @@
             
             let dayRatio = THREE.MathUtils.clamp((sunElevation + 15) / 30, 0, 1);
             let nightRatio = 1.0 - dayRatio;
+
+            // 夜が深まると、追加のランタン2個が海に現れる
+            if (floaters) {
+                floaters.forEach(f => {
+                    if (f.userData && f.userData.isNightExtra) {
+                        f.visible = nightRatio > 0.55;
+                    }
+                });
+            }
             
             let sunsetRaw = THREE.MathUtils.clamp(1.0 - Math.abs(sunElevation - 5) / 35.0, 0, 1);
             let sunsetRatio = Math.pow(sunsetRaw, 1.5);
