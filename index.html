@@ -1997,7 +1997,7 @@
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.3; 
                         touchedItemsSet.add("波間を漂うガラスの浮き玉");
                     } else if (group.userData.isBoat) {
-                        showMessage("小さな木の船が、静かな波に揺られている。\n\nこの船にも、まだ見ぬ海の向こうへ続く旅があるのだろう。");
+                        showMessage("小さな木の船が、静かな波に揺られている。\n\nこの船にも、まだ見ぬ海の向こうへ続く旅があるのだろう。", false);
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.04;
                         touchedItemsSet.add("小さな木製の船");
@@ -2012,7 +2012,7 @@
             }
         }
         
-        function showMessage(text) {
+        function showMessage(text, countBottle = true) {
             const msgText = document.getElementById('message-text');
             if (msgText) msgText.innerText = text;
             
@@ -2024,14 +2024,17 @@
                 readMessagesList.push(text);
             }
             
-            readBottlesCount++;
-            const counterElement = document.getElementById('bottle-counter');
-            if (counterElement) {
-                counterElement.innerHTML = '🍾 <span class="bottle-count-num">' + readBottlesCount + '</span>';
-                counterElement.style.textShadow = '0 0 15px rgba(255, 255, 255, 1)';
-                setTimeout(() => {
-                    counterElement.style.textShadow = '0px 2px 4px rgba(0, 0, 0, 0.9)';
-                }, 500);
+            // 瓶のメッセージを読んだ場合だけカウンターを増やす
+            if (countBottle) {
+                readBottlesCount++;
+                const counterElement = document.getElementById('bottle-counter');
+                if (counterElement) {
+                    counterElement.innerHTML = '🍾 <span class="bottle-count-num">' + readBottlesCount + '</span>';
+                    counterElement.style.textShadow = '0 0 15px rgba(255, 255, 255, 1)';
+                    setTimeout(() => {
+                        counterElement.style.textShadow = '0px 2px 4px rgba(0, 0, 0, 0.9)';
+                    }, 500);
+                }
             }
         }
 
