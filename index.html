@@ -2325,9 +2325,27 @@
                 };
 
                 if (typeChoice < 0.22) {
-                    // 細長い流木
-                    addLog(floaterGroup, 5.8 + Math.random() * 2.8, 0.11 + Math.random() * 0.06, 0, 0, 0, 0.5);
-                    if (Math.random() < 0.55) addLog(floaterGroup, 1.8, 0.055, 0.7, 0.18, 0.12, 0.35);
+                    // 細長い流木：枝の根元を幹に重ね、一本につながった形にする
+                    const mainLength = 5.8 + Math.random() * 2.8;
+                    const mainRadius = 0.11 + Math.random() * 0.06;
+                    addLog(floaterGroup, mainLength, mainRadius, 0, 0, 0, 0.5);
+
+                    if (Math.random() < 0.55) {
+                        const branchLength = 1.35 + Math.random() * 0.55;
+                        const branchAngle = 0.55 + Math.random() * 0.28;
+                        const attachX = -0.2 + Math.random() * 1.5;
+                        const attachY = mainRadius * 0.72;
+                        const branch = addLog(
+                            floaterGroup,
+                            branchLength,
+                            0.045 + Math.random() * 0.018,
+                            attachX + Math.cos(branchAngle) * branchLength * 0.43,
+                            attachY + Math.sin(branchAngle) * branchLength * 0.43,
+                            0.015,
+                            0.35
+                        );
+                        branch.rotation.z = -branchAngle;
+                    }
                     floaterGroup.scale.set(1, 0.9, 0.9);
                 } else if (typeChoice < 0.42) {
                     // 小さく短い枝
