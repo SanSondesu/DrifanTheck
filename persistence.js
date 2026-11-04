@@ -1,29 +1,11 @@
-(function (global) {
- 'use strict';
- const cfg=global.DrifanConfig||{storage:{key:'drifantheck-save-v1',version:1}};
- const key=cfg.storage.key, version=cfg.storage.version;
- let available=true;
- function defaults(){return {version,messages:[],discoveries:{},bottleCount:0,settings:{timeProgress:null}};}
- function load(){
-  const d=defaults();
-  try{
-   const raw=global.localStorage&&global.localStorage.getItem(key); if(!raw)return d;
-   const p=JSON.parse(raw); if(!p||p.version!==version)return d;
-   return {version,messages:Array.isArray(p.messages)?p.messages.filter(x=>typeof x==='string').slice(-300):[],
-    discoveries:p.discoveries&&typeof p.discoveries==='object'?p.discoveries:{},
-    bottleCount:Number.isFinite(p.bottleCount)?Math.max(0,Math.floor(p.bottleCount)):0,
-    settings:{timeProgress:Number.isFinite(p.settings&&p.settings.timeProgress)?Math.max(0,Math.min(1,p.settings.timeProgress)):null}};
-  }catch(e){available=false;console.warn('DrifanTheck: saved data could not be read.',e);return d;}
- }
- function save(data){
-  try{
-   if(!global.localStorage)return false;
-   global.localStorage.setItem(key,JSON.stringify({version,messages:Array.isArray(data.messages)?data.messages.slice(-300):[],
-    discoveries:data.discoveries&&typeof data.discoveries==='object'?data.discoveries:{},
-    bottleCount:Number.isFinite(data.bottleCount)?data.bottleCount:0,
-    settings:{timeProgress:Number.isFinite(data.timeProgress)?Math.max(0,Math.min(1,data.timeProgress)):null}}));
-   available=true;return true;
-  }catch(e){available=false;console.warn('DrifanTheck: saving unavailable.',e);return false;}
- }
- global.DrifanStorage=Object.freeze({load,save,isAvailable:()=>available});
-})(window);
+(function(g){'use strict';
+const c=g.DrifanConfig||{storage:{key:'drifantheck-save-v1',version:1,maxMessages:300}},key=c.storage.key,version=c.storage.version,max=c.storage.maxMessages||300;let available=true;
+function defaults(){return{version,messages:[],discoveries:{},bottleCount:0,settings:{timeProgress:null}};}
+function normalize(p){if(!p||p.version!==version)return defaults();const d={};if(p.discoveries&&typeof p.discoveries==='object'&&!Array.isArray(p.discoveries))Object.keys(p.discoveries).forEach(n=>{const v=Number(p.discoveries[n]&&p.discoveries[n].count);if(Number.isFinite(v)&&v>0)d[n]={count:Math.floor(v)};});
+return{version,messages:Array.isArray(p.messages)?p.messages.filter(x=>typeof x==='string').slice(-max):[],discoveries:d,bottleCount:Number.isFinite(p.bottleCount)?Math.max(0,Math.floor(p.bottleCount)):0,settings:{timeProgress:Number.isFinite(p.settings&&p.settings.timeProgress)?Math.max(0,Math.min(1,p.settings.timeProgress)):null}};}
+function load(){try{const raw=g.localStorage&&g.localStorage.getItem(key);return raw?normalize(JSON.parse(raw)):defaults();}catch(e){available=false;console.warn('DrifanTheck: saved data could not be read.',e);return defaults();}}
+function save(data){try{if(!g.localStorage)return false;const safe=normalize({version,messages:data.messages,discoveries:data.discoveries,bottleCount:data.bottleCount,settings:{timeProgress:data.timeProgress}});g.localStorage.setItem(key,JSON.stringify(safe));available=true;return true;}catch(e){available=false;console.warn('DrifanTheck: saving unavailable.',e);return false;}}
+function selfTest(testStorage){const sample={version,messages:['test'],discoveries:{'test-item':{count:2}},bottleCount:3,settings:{timeProgress:.75}},r=normalize(JSON.parse(JSON.stringify(sample)));const passed=r.messages[0]==='test'&&r.discoveries['test-item'].count===2&&r.bottleCount===3&&r.settings.timeProgress===.75;let storagePassed=null;
+if(testStorage){let old=null,had=false;try{const s=g.localStorage,k=key+'-probe';old=s.getItem(k);had=old!==null;s.setItem(k,JSON.stringify(sample));const q=normalize(JSON.parse(s.getItem(k)));storagePassed=q.messages[0]==='test'&&q.bottleCount===3;if(had)s.setItem(k,old);else s.removeItem(k);}catch(e){storagePassed=false;try{if(!had)g.localStorage.removeItem(key+'-probe');}catch(_){}}}
+return{passed,storagePassed};}
+g.DrifanStorage=Object.freeze({load,save,selfTest,isAvailable:()=>available});})(window);
