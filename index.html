@@ -3854,12 +3854,12 @@
                     f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight;
                     f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
                     f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
-                    f.rotation.y += f.userData.rotSpeed;
+                    f.rotation.y += f.userData.rotSpeed * frameScale;
                 } else if (f.userData.isBoat) {
                     f.position.y = Math.sin(time * 1.5 + f.userData.phase) * f.userData.bobHeight;
                     f.rotation.x = Math.sin(time * 1.1 + f.userData.phase) * 0.055;
                     f.rotation.z = Math.cos(time * 1.3 + f.userData.phase) * 0.045;
-                    f.rotation.y += f.userData.rotSpeed;
+                    f.rotation.y += f.userData.rotSpeed * frameScale;
                 } else {
                     let pushOffset = 0;
                     if (f.userData.isPushed) {
@@ -3874,7 +3874,7 @@
                     f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
                     f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
                     f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
-                    f.rotation.y += f.userData.rotSpeed;
+                    f.rotation.y += f.userData.rotSpeed * frameScale;
                 }
             });
 
@@ -3936,7 +3936,7 @@
 
             for (let i = whaleParticles.length - 1; i >= 0; i--) {
                 let p = whaleParticles[i];
-                p.life -= p.decay;
+                p.life -= p.decay * frameScale;
                 p.vy -= 0.03 * frameScale; 
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
