@@ -1380,7 +1380,7 @@
             scene.add(directionalLight);
 
             createRock();
-            createFloaters(12, 80, 12, 4, 4, 6, 3);
+            createFloaters(12, 80, 12, 4, 4, 6, 5);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; 
@@ -2090,9 +2090,9 @@
         }
 
         function setSliderToProgress(progress) {
-            const thetaClock = progress * Math.PI * 2 - Math.PI; 
-            const angle = thetaClock - Math.PI / 2;
-            updateSliderThumb(angle, progress);
+            const totalMinutes = ((progress % 1) + 1) % 1 * 1440;
+            const clockAngle = ((totalMinutes % 720) / 720) * Math.PI * 2 - Math.PI / 2;
+            updateSliderThumb(clockAngle, progress);
             updateTimeOfDay(progress);
         }
 
@@ -2102,14 +2102,14 @@
             const rect = circularSlider.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
             const cy = rect.top + rect.height / 2;
-            
-            let angle = Math.atan2(e.clientY - cy, e.clientX - cx);
-            
-            let thetaClock = angle + Math.PI / 2; 
-            if (thetaClock < 0) thetaClock += Math.PI * 2;
-            
-            let progress = (thetaClock + Math.PI) % (Math.PI * 2) / (Math.PI * 2);
-            
+            const angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+
+            // 文字盤の角度を12時間時計として読み取り、現在の午前/午後を維持する
+            let clockProgress = (angle + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
+            let minutesInHalfDay = clockProgress / (Math.PI * 2) * 720;
+            let totalMinutes = minutesInHalfDay + (currentHours >= 12 ? 720 : 0);
+            const progress = totalMinutes / 1440;
+
             updateSliderThumb(angle, progress);
             updateTimeOfDay(progress);
         }
@@ -2118,31 +2118,29 @@
             const sliderThumb = document.getElementById('slider-thumb');
             const timeDisplay = document.getElementById('time-display');
             if (!sliderThumb || !timeDisplay) return;
-            
-            const r = 50; 
-            const thumbX = 50 + Math.cos(angle) * r;
-            const thumbY = 50 + Math.sin(angle) * r;
-            
+
+            let totalMinutes = (((progress % 1) + 1) % 1) * 1440;
+            const hours = Math.floor(totalMinutes / 60) % 24;
+            const minutes = Math.floor(totalMinutes % 60);
+            const exactMinutesInHalfDay = totalMinutes % 720;
+            const handAngle = (exactMinutesInHalfDay / 720) * Math.PI * 2 - Math.PI / 2;
+            const r = 50;
+            const thumbX = 50 + Math.cos(handAngle) * r;
+            const thumbY = 50 + Math.sin(handAngle) * r;
+
             sliderThumb.style.left = thumbX + 'px';
             sliderThumb.style.top = thumbY + 'px';
-            
-            let hours = Math.floor(progress * 24);
-            if (hours >= 24) hours = 0;
-            let minutes = Math.floor((progress * 24 - hours) * 60);
-            
+
             currentHours = hours;
             currentMinutes = minutes;
 
-            // 12時間式の時計針。分の進みに合わせて時針も滑らかに進める
+            // つまみと時計の針を同じ12時間角度から計算して、常に位置を一致させる
             const hourHand = document.getElementById('hour-hand');
             const minuteHand = document.getElementById('minute-hand');
-            if (hourHand) {
-                const hourAngle = ((hours % 12) + minutes / 60) * 30;
-                hourHand.style.transform = 'translate(-50%, -100%) rotate(' + hourAngle + 'deg)';
-            }
-            if (minuteHand) {
-                minuteHand.style.transform = 'translate(-50%, -100%) rotate(' + (minutes * 6) + 'deg)';
-            }
+            const minuteAngle = (totalMinutes % 60) * 6;
+            const hourAngle = (exactMinutesInHalfDay / 720) * 360;
+            if (hourHand) hourHand.style.transform = 'translate(-50%, -100%) rotate(' + hourAngle + 'deg)';
+            if (minuteHand) minuteHand.style.transform = 'translate(-50%, -100%) rotate(' + minuteAngle + 'deg)';
 
             const hText = document.getElementById('hour-text');
             const mText = document.getElementById('minute-text');
@@ -2506,7 +2504,7 @@
             }
         }
 
-        function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15, boatCount = 3) {
+        function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15, boatCount = 5) {
             floaters = [];
 
             for(let i=0; i<bottleCount; i++) {
