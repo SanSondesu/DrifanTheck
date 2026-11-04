@@ -1,12 +1,3 @@
-(function(global){
- 'use strict';
- function removeFromArray(array,obj){if(!Array.isArray(array))return false;const i=array.indexOf(obj);if(i<0)return false;array.splice(i,1);return true;}
- function removeSceneObject(scene,obj,opts){
-  if(!obj)return false;opts=opts||{};
-  if(obj.parent&&typeof obj.parent.remove==='function')obj.parent.remove(obj);else if(scene)scene.remove(obj);
-  if(opts.dispose&&global.DrifanResources)global.DrifanResources.disposeTree(obj);
-  if(opts.array)removeFromArray(opts.array,obj);
-  return true;
- }
- global.DrifanObjects=Object.freeze({removeFromArray,removeSceneObject});
-})(window);
+(function(g){'use strict';function removeFromArray(a,o){if(!Array.isArray(a))return false;const i=a.indexOf(o);if(i<0)return false;a.splice(i,1);return true;}
+function removeSceneObject(scene,obj,opts){if(!obj)return false;opts=opts||{};const parent=obj.parent||scene;if(parent&&typeof parent.remove==='function')parent.remove(obj);if(opts.dispose&&g.DrifanResources)g.DrifanResources.disposeTree(obj,scene);if(opts.array)removeFromArray(opts.array,obj);return true;}
+g.DrifanObjects=Object.freeze({removeFromArray,removeSceneObject});})(window);
