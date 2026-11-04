@@ -1,17 +1,5 @@
-(function(global){
- 'use strict';
- function disposeTree(root){
-  if(!root||typeof root.traverse!=='function')return;
-  const geometries=new Set(),materials=new Set(),textures=new Set();
-  root.traverse(node=>{
-   if(!node||!node.isMesh)return;
-   if(node.geometry)geometries.add(node.geometry);
-   const list=Array.isArray(node.material)?node.material:(node.material?[node.material]:[]);
-   list.forEach(m=>{if(!m||materials.has(m))return;materials.add(m);
-    Object.keys(m).forEach(k=>{const v=m[k];if(v&&v.isTexture)textures.add(v);});
-   });
-  });
-  textures.forEach(x=>x.dispose());materials.forEach(x=>x.dispose());geometries.forEach(x=>x.dispose());
- }
- global.DrifanResources=Object.freeze({disposeTree});
-})(window);
+(function(g){'use strict';
+function scan(v,s,seen){if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);if(v.isTexture){s.textures.add(v);return;}if(Array.isArray(v)){v.forEach(x=>scan(x,s,seen));return;}Object.keys(v).forEach(k=>{if(k!=='parent')scan(v[k],s,seen);});}
+function collect(root,s){if(!root||typeof root.traverse!=='function')return;root.traverse(n=>{if(!n||!n.isMesh)return;if(n.geometry)s.geometries.add(n.geometry);const ms=Array.isArray(n.material)?n.material:(n.material?[n.material]:[]);ms.forEach(m=>{if(m){s.materials.add(m);scan(m,s,new Set());}});});}
+function disposeTree(root,scene){if(!root||typeof root.traverse!=='function')return false;const dead={geometries:new Set(),materials:new Set(),textures:new Set()};collect(root,dead);if(scene){const live={geometries:new Set(),materials:new Set(),textures:new Set()};collect(scene,live);for(const k of Object.keys(dead))live[k].forEach(x=>dead[k].delete(x));}dead.textures.forEach(x=>x.dispose());dead.materials.forEach(x=>x.dispose());dead.geometries.forEach(x=>x.dispose());return true;}
+g.DrifanResources=Object.freeze({disposeTree});})(window);
