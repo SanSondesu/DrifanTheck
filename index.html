@@ -2928,18 +2928,12 @@
                 floaters.push(boat);
             }
 
-            // 各漂流物に大きさに応じた簡易衝突半径を設定
+            // 実際のモデル寸法から衝突半径を求める（種類ごとの拡大率も反映）
             floaters.forEach(f => {
-                const d = f.userData || {};
-                let radius = 1.5;
-                if (d.isBottle) radius = 2.4;
-                else if (d.isBoat) radius = 3.5;
-                else if (d.isLantern) radius = 2.0;
-                else if (d.isWatch || d.isRecord) radius = 1.8;
-                else if (d.isGlassBall) radius = 1.15;
-                else radius = 2.8; // 流木
-                const scale = Math.max(f.scale.x, f.scale.z);
-                d.collisionRadius = radius * scale;
+                f.updateMatrixWorld(true);
+                const bounds = new THREE.Box3().setFromObject(f);
+                const size = bounds.getSize(new THREE.Vector3());
+                f.userData.collisionRadius = Math.max(size.x, size.z) * 0.42 + 0.35;
             });
         }
 
