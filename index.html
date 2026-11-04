@@ -178,11 +178,16 @@
             inset: 7px;
             border-radius: 50%;
             pointer-events: none;
-            background:
-                repeating-conic-gradient(from -1deg, rgba(255,255,255,0.58) 0deg 1deg, transparent 1deg 6deg);
+            opacity: 0.82;
+        }
+        #clock-face::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: repeating-conic-gradient(from -1deg, rgba(255,255,255,0.58) 0deg 1deg, transparent 1deg 6deg);
             -webkit-mask: radial-gradient(circle, transparent 0 72%, #000 73% 100%);
             mask: radial-gradient(circle, transparent 0 72%, #000 73% 100%);
-            opacity: 0.82;
         }
         .clock-hand {
             position: absolute;
