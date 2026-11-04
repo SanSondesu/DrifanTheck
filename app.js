@@ -471,6 +471,11 @@ let scene, camera, renderer, water, sky;
                 return false;
             }
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, (window.DrifanConfig && DrifanConfig.limits.pixelRatio) || 2));
+            renderer.domElement.addEventListener('webglcontextlost', (event) => {
+                event.preventDefault();
+                console.error('WebGL context lost.');
+                if (window.DrifanRuntime) DrifanRuntime.show('3D表示が一時停止しました。ページを再読み込みして復旧してください。');
+            });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 0.6; 
