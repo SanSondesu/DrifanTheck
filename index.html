@@ -524,22 +524,33 @@
         .item-li.notebook-stage-2 { border-left-color:#d4af37 !important; }
         .item-li.notebook-stage-3 { border-left-color:#f0d98a !important; }
         #item-description {
-            margin-top:18px; padding:16px 17px; min-height:110px;
-            background:rgba(25,14,9,0.38); border:1px solid rgba(212,175,55,0.22);
-            border-radius:5px; color:#e0d8c8; font-family:'Klee One',cursive;
-            font-size:0.9rem; line-height:2; white-space:pre-line;
-            box-shadow:inset 0 0 18px rgba(15,8,4,0.28); transition:all 0.4s;
+            position:relative; overflow:hidden; isolation:isolate; margin-top:18px;
+            padding:24px 24px 22px 38px; min-height:190px; color:#44372b;
+            font-family:'Klee One',cursive; font-size:.94rem; line-height:2.15;
+            white-space:normal; border:1px solid #c9b98f; border-radius:2px;
+            background-color:#f2e8cf;
+            background-image:linear-gradient(90deg,transparent 0 27px,rgba(174,91,75,.30) 27px 28px,transparent 28px),
+              repeating-linear-gradient(to bottom,transparent 0 30px,rgba(110,135,145,.20) 30px 31px),
+              radial-gradient(ellipse at 12% 18%,rgba(255,255,255,.48),transparent 55%),
+              url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.12'/%3E%3C/svg%3E");
+            box-shadow:0 5px 12px rgba(0,0,0,.22),inset 0 0 24px rgba(126,92,48,.13); transition:all .45s ease;
         }
-        #item-description .description-progress {
-            display:block; margin-bottom:8px; color:#b9a77d;
-            font-family:'Montserrat',sans-serif; font-size:0.68rem; letter-spacing:1.5px;
-        }
-        #item-description.notebook-stage-1 { border-color:rgba(185,167,125,0.42); }
-        #item-description.notebook-stage-2 { border-color:rgba(212,175,55,0.58); }
-        #item-description.notebook-stage-3 { border-color:rgba(240,217,138,0.8); box-shadow:inset 0 0 22px rgba(212,175,55,0.09),0 0 12px rgba(212,175,55,0.08); }
-        #notebook-container.notebook-page-stage-1 { box-shadow:0 25px 50px rgba(0,0,0,0.9),inset 0 0 50px rgba(30,15,10,0.8),0 0 0 1px rgba(185,167,125,0.12); }
-        #notebook-container.notebook-page-stage-2 { border-color:rgba(212,175,55,0.72); box-shadow:0 25px 50px rgba(0,0,0,0.9),inset 0 0 50px rgba(30,15,10,0.8),0 0 18px rgba(212,175,55,0.12); }
-        #notebook-container.notebook-page-stage-3 { border-color:#b99b50; box-shadow:0 25px 50px rgba(0,0,0,0.9),inset 0 0 50px rgba(30,15,10,0.8),0 0 25px rgba(212,175,55,0.2); }
+        #item-description::before { content:''; position:absolute; z-index:-1; inset:7px; border:1px solid rgba(139,111,69,.22); pointer-events:none; }
+        #item-description::after { content:''; position:absolute; right:0; bottom:0; width:34px; height:34px; background:linear-gradient(135deg,transparent 48%,rgba(167,145,107,.30) 49%,#dfd1ad 53%,#f8f0dc 100%); box-shadow:-2px -2px 4px rgba(75,55,31,.10); pointer-events:none; }
+        #item-description .description-progress { display:block; margin:-2px 0 12px; padding-bottom:7px; color:#8a7655; border-bottom:1px solid rgba(137,111,75,.30); font-family:'Montserrat',sans-serif; font-size:.67rem; letter-spacing:1.6px; }
+        #item-description .description-line { display:block; min-height:30px; }
+        #item-description .description-echo { display:block; margin-top:8px; color:#766448; font-size:.86rem; }
+        #item-description .page-sketch { display:block; width:100%; max-width:180px; height:72px; margin:12px auto 4px; opacity:.76; overflow:visible; filter:drop-shadow(0 1px 0 rgba(255,255,255,.35)); }
+        #item-description .page-sketch path,#item-description .page-sketch circle,#item-description .page-sketch line,#item-description .page-sketch ellipse,#item-description .page-sketch rect { fill:none; stroke:#887657; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+        #item-description .page-sketch .sketch-fill { fill:rgba(136,118,87,.12); }
+        #item-description .page-decoration { display:block; text-align:center; margin:13px 0 2px; color:#9a7843; letter-spacing:5px; font-size:1rem; }
+        #item-description .page-stamp { display:inline-block; float:right; margin:8px 5px 0 12px; padding:5px 8px; border:3px double #a58b5d; border-radius:50%; color:#987c4c; font-size:.64rem; line-height:1.35; text-align:center; transform:rotate(-9deg); opacity:.82; white-space:pre-line; }
+        #item-description.notebook-stage-1 { border:2px solid #c2a875; box-shadow:0 5px 15px rgba(0,0,0,.25),inset 0 0 26px rgba(172,135,74,.17); }
+        #item-description.notebook-stage-2 { border:2px solid #b99a5f; box-shadow:0 6px 18px rgba(0,0,0,.28),inset 0 0 32px rgba(172,135,74,.22),0 0 0 3px rgba(212,175,55,.13); }
+        #item-description.notebook-stage-3 { border:3px double #a98443; box-shadow:0 7px 22px rgba(0,0,0,.3),inset 0 0 38px rgba(172,135,74,.25),0 0 0 4px rgba(212,175,55,.20),0 0 18px rgba(212,175,55,.22); }
+        #notebook-container.notebook-page-stage-1 { box-shadow:0 25px 50px rgba(0,0,0,.9),inset 0 0 50px rgba(30,15,10,.8),0 0 0 2px rgba(185,167,125,.34); }
+        #notebook-container.notebook-page-stage-2 { border:2px solid #c29c50; box-shadow:0 25px 50px rgba(0,0,0,.9),inset 0 0 50px rgba(30,15,10,.8),0 0 0 3px rgba(212,175,55,.25),0 0 22px rgba(212,175,55,.25); }
+        #notebook-container.notebook-page-stage-3 { border:3px double #e0bd6d; box-shadow:0 25px 50px rgba(0,0,0,.9),inset 0 0 50px rgba(30,15,10,.8),0 0 0 4px rgba(212,175,55,.32),0 0 28px rgba(212,175,55,.32); }
 
         #preview-area {
             flex: 1.5;
@@ -1038,7 +1049,7 @@
             }, interval);
         }
 
-        function playChimeSound() {
+        function playChimeSound(distanceGain = 1) {
             if(!audioCtx) return;
             if(audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 audioCtx.resume().catch(e => console.log("Audio resume prevented:", e));
@@ -1058,7 +1069,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(partial.frequency * (0.997 + Math.random() * 0.006), start);
                 gain.gain.setValueAtTime(0.0001, start);
-                gain.gain.linearRampToValueAtTime(partial.gain, start + 0.014);
+                gain.gain.linearRampToValueAtTime(partial.gain * distanceGain, start + 0.014);
                 gain.gain.exponentialRampToValueAtTime(0.0001, start + partial.decay);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
@@ -1089,7 +1100,7 @@
             osc.stop(now + 7.0);
         }
 
-        function playWatchSoundAndShowTime() {
+        function playWatchSoundAndShowTime(distanceGain = 1) {
             if(!audioCtx) return;
             if(audioCtx.state === 'suspended') audioCtx.resume();
             
@@ -1115,7 +1126,7 @@
                 filter.frequency.setValueAtTime(1500, t);
                 
                 gain.gain.setValueAtTime(0, t);
-                gain.gain.linearRampToValueAtTime(0.05, t + 0.01);
+                gain.gain.linearRampToValueAtTime(0.05 * distanceGain, t + 0.01);
                 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
                 
                 osc.connect(filter);
@@ -1132,7 +1143,7 @@
             watchSoundInterval = setInterval(tick, 1000);
         }
 
-        function playRecordSound() {
+        function playRecordSound(distanceGain = 1) {
             if(!audioCtx || audioCtx.state !== 'running') return;
             const now = audioCtx.currentTime;
             
@@ -1145,7 +1156,7 @@
             noiseFilter.type = 'bandpass';
             noiseFilter.frequency.setValueAtTime(6000, now);
             const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.01, now);
+            noiseGain.gain.setValueAtTime(0.01 * distanceGain, now);
             noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 8.0);
             
             noiseOsc.connect(noiseFilter);
@@ -1179,7 +1190,7 @@
                 filter.frequency.setValueAtTime(600, startTime);
                 
                 gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(0.08, startTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0.08 * distanceGain, startTime + 0.05);
                 gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.5);
                 
                 osc.connect(filter);
@@ -1193,7 +1204,7 @@
             }
         }
 
-        function playGlassSound() {
+        function playGlassSound(distanceGain = 1) {
             if(!audioCtx || audioCtx.state !== 'running') return;
             const now = audioCtx.currentTime;
 
@@ -1214,7 +1225,7 @@
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(frequency * (0.999 + Math.random() * 0.002), start);
                     gain.gain.setValueAtTime(0.0001, start);
-                    gain.gain.linearRampToValueAtTime(strike.level / (1 + index * 0.65), start + 0.009);
+                    gain.gain.linearRampToValueAtTime((strike.level / (1 + index * 0.65)) * distanceGain, start + 0.009);
                     gain.gain.exponentialRampToValueAtTime(0.0001, start + strike.decay * (1 + index * 0.12));
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
@@ -1361,55 +1372,41 @@
             return true;
         }
 
+        function createNotebookSketch(itemName) {
+            const ns="http://www.w3.org/2000/svg", svg=document.createElementNS(ns,"svg");
+            svg.setAttribute("viewBox","0 0 180 72"); svg.setAttribute("class","page-sketch"); svg.setAttribute("aria-hidden","true");
+            const add=(tag,attrs)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));svg.appendChild(el);return el;};
+            const p=(d,extra={})=>add("path",{d,...extra});
+            if(itemName==="小さな木製の船"){p("M35 43 Q82 52 139 42 L126 56 Q83 62 48 55 Z",{class:"sketch-fill"});p("M83 43 L83 8 M84 12 L116 38 L84 38 Z M78 13 L51 35 L78 35 Z M84 8 L103 12 L84 16 Z M25 63 Q55 58 82 63 T145 63");}
+            else if(itemName==="波間を漂う古い流木"){p("M26 43 Q54 35 83 41 T145 36 M62 40 L54 20 L42 16 M93 40 L108 22 L123 18 M52 38 L45 31 M111 38 L121 32 M25 57 Q54 52 83 57 T145 57");}
+            else if(itemName==="海を漂う古いランタン"){p("M68 19 L112 19 L108 51 L72 51 Z M75 19 L80 9 L100 9 L105 19 M80 51 L78 58 L102 58 L100 51 M90 27 Q78 38 90 45 Q102 38 90 27 M90 9 L90 4 M60 62 Q90 57 120 62");}
+            else if(itemName==="時を刻むアンティーク時計"){add("circle",{cx:90,cy:35,r:24,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:19});p("M90 35 L90 20 M90 35 L103 42 M90 7 L90 11 M90 59 L90 63 M62 35 L66 35 M114 35 L118 35 M78 8 L102 8");}
+            else if(itemName==="ノスタルジックな古いレコード盤"){add("circle",{cx:90,cy:35,r:27,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:20});add("circle",{cx:90,cy:35,r:13});add("circle",{cx:90,cy:35,r:5});p("M116 16 Q132 8 143 18");}
+            else if(itemName==="波間を漂うガラスの浮き玉"){add("circle",{cx:90,cy:34,r:25,class:"sketch-fill"});p("M74 20 Q90 30 106 20 M72 44 Q90 34 108 45 M90 9 L90 59 M65 34 L115 34 M30 60 Q55 55 75 60 T130 60");}
+            else{p("M48 17 L132 17 L132 54 L48 54 Z M48 17 L90 7 L132 17 M58 54 L58 61 L122 61 L122 54 M90 20 L90 49 M82 31 Q90 25 98 31 M80 36 Q90 43 100 36");}
+            return svg;
+        }
         function renderItemDescription(itemName) {
-            const panel = document.getElementById('item-description');
-            const page = document.getElementById('notebook-container');
-            if (!panel || !itemName) return;
-            const data = FLOATER_DESCRIPTIONS[itemName];
-            const count = floaterDiscovery[itemName] ? floaterDiscovery[itemName].count : 0;
-            const stage = count >= 10 ? 3 : count >= 7 ? 2 : count >= 4 ? 1 : 0;
-            panel.className = stage ? 'notebook-stage-' + stage : '';
-            if (page) page.className = 'paper-modal notebook-page-stage-' + stage;
-            panel.textContent = '';
-
-            const progress = document.createElement('span');
-            progress.className = 'description-progress';
-            progress.textContent = '出会い ' + count + ' 回  ·  記録 ' + Math.min(count, 3) + '/3';
-            panel.appendChild(progress);
-
-            if (data) {
-                for (let i = 0; i < Math.min(count, 3); i++) {
-                    const line = document.createElement('div');
-                    line.textContent = data.lines[i];
-                    panel.appendChild(line);
+            const panel=document.getElementById('item-description'), page=document.getElementById('notebook-container');
+            if(!panel||!itemName)return;
+            const data=FLOATER_DESCRIPTIONS[itemName], count=floaterDiscovery[itemName]?floaterDiscovery[itemName].count:0;
+            const stage=count>=10?3:count>=7?2:count>=4?1:0;
+            panel.className=stage?'notebook-stage-'+stage:'';
+            if(page)page.className='paper-modal notebook-page-stage-'+stage;
+            panel.textContent='';
+            const progress=document.createElement('span');progress.className='description-progress';
+            progress.textContent='FIELD NOTES  ·  出会い '+count+' 回  ·  記録 '+Math.min(count,3)+'/3';panel.appendChild(progress);
+            if(data){
+                for(let i=0;i<Math.min(count,3);i++){const line=document.createElement('div');line.className='description-line';line.textContent=data.lines[i];panel.appendChild(line);}
+                if(count>=4){
+                    const echoCount=Math.min(count-3,data.echoes.length);
+                    for(let i=0;i<echoCount;i++){const echo=document.createElement('div');echo.className='description-echo';echo.textContent=data.echoes[i];panel.appendChild(echo);}
+                    panel.appendChild(createNotebookSketch(itemName));
                 }
-                if (count >= 4) {
-                    const echoCount = Math.min(count - 3, data.echoes.length);
-                    for (let i = 0; i < echoCount; i++) {
-                        const echo = document.createElement('div');
-                        echo.textContent = data.echoes[i];
-                        echo.style.marginTop = i === 0 ? '10px' : '2px';
-                        echo.style.color = '#d6c59e';
-                        panel.appendChild(echo);
-                    }
-                }
-                if (count > 3 + data.echoes.length) {
-                    const completed = document.createElement('div');
-                    completed.textContent = 'このページに、たくさんの出会いが綴られました。';
-                    completed.style.marginTop = '10px';
-                    completed.style.color = '#b9a77d';
-                    panel.appendChild(completed);
-                }
+                if(count>3+data.echoes.length){const completed=document.createElement('div');completed.className='description-echo';completed.textContent='このページに、たくさんの出会いが綴られました。';panel.appendChild(completed);}
             }
-            if (stage > 0) {
-                const ornament = document.createElement('div');
-                ornament.textContent = stage === 1 ? '—  ✧  —' : stage === 2 ? '—  ✧  ❖  ✧  —' : '❖  ✧  ❖  ✧  ❖';
-                ornament.style.textAlign = 'center';
-                ornament.style.marginTop = '12px';
-                ornament.style.color = '#d4af37';
-                ornament.style.letterSpacing = '3px';
-                panel.appendChild(ornament);
-            }
+            if(stage>=2){const stamp=document.createElement('span');stamp.className='page-stamp';stamp.textContent=stage===2?'SEA\\nARCHIVE':'SEA\\nARCHIVE\\n✧  完  ✧';panel.appendChild(stamp);}
+            if(stage>0){const ornament=document.createElement('div');ornament.className='page-decoration';ornament.textContent=stage===1?'⌁  ✧  ❧  ✧  ⌁':stage===2?'❧  ✧  ❖  ✧  ❧':'✧  ❖  ❧  ❖  ✧';panel.appendChild(ornament);}
         }
 
         function updateNotebookUI(selectedItem = null) {
@@ -1544,16 +1541,16 @@
 
         // --- プレビュー用メッシュの生成関数 ---
         function createPreviewWood() {
-            const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: 0x4a3b32, roughness: 0.9, flatShading: true });
-            const m1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3, 8), mat);
-            m1.rotation.z = Math.PI / 2;
-            group.add(m1);
-            const m2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 2, 8), mat);
-            m2.rotation.z = Math.PI / 2; m2.position.set(2.2, 0.2, 0.1); m2.rotation.y = 0.2;
-            group.add(m2);
-            group.position.x = -1;
-            return group;
+            const group=new THREE.Group(), palette=[0x4a3b32,0x594333,0x66503b,0x3e352f,0x71583f];
+            const mat=new THREE.MeshStandardMaterial({color:palette[Math.floor(Math.random()*palette.length)],roughness:.94,flatShading:true});
+            const variant=Math.floor(Math.random()*5);
+            const add=(length,radius,x,y,z,angle=0)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius*.68,radius,length,7),mat);mesh.rotation.z=Math.PI/2+angle;mesh.position.set(x,y,z);group.add(mesh);};
+            if(variant===0){add(4.8,.18,0,0,0);add(1.9,.07,.8,.35,0,-.7);}
+            else if(variant===1){add(2.2,.3,0,0,0);add(1.1,.11,-.3,.3,.08,.8);}
+            else if(variant===2){add(5.6,.12,0,0,0);add(1.7,.06,-1.1,.22,.04,-.55);add(1.4,.055,1.1,-.18,.03,.6);}
+            else if(variant===3){add(3.6,.28,0,0,0);add(2.1,.12,.5,.35,.06,-.85);}
+            else{add(2.8,.18,-.5,0,0,.25);add(2.2,.14,.8,.25,.04,-.55);add(1.3,.07,-.9,.5,.02,.75);}
+            group.position.x=-1;return group;
         }
 
         function createPreviewLantern() {
@@ -1665,12 +1662,14 @@
             return group;
         }
 
-        function createBoatModel(scale = 1) {
+        function createBoatModel(scale = 1, variantIndex = Math.floor(Math.random() * 5)) {
             const boat = new THREE.Group();
-            const woodMat = new THREE.MeshStandardMaterial({ color: 0x765033, roughness: 0.92, flatShading: true });
-            const edgeMat = new THREE.MeshStandardMaterial({ color: 0x4b3021, roughness: 0.95, flatShading: true });
-            const sailMat = new THREE.MeshStandardMaterial({ color: 0xe9dfc9, roughness: 0.98, side: THREE.DoubleSide });
-            const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8b765c, roughness: 1.0 });
+            const variants=[{size:.88,sail:0xe9dfc9,flag:0x9b5540,mast:1.75,cabin:false,secondSail:false},{size:1.08,sail:0xd8e0d0,flag:0x607b73,mast:1.95,cabin:true,secondSail:false},{size:1.18,sail:0xe4d3b5,flag:0x9a7440,mast:1.65,cabin:false,secondSail:true},{size:.96,sail:0xd7dce5,flag:0x647b9b,mast:2.05,cabin:false,secondSail:false},{size:1.12,sail:0xe8dfc9,flag:0x8d654e,mast:1.8,cabin:true,secondSail:true}];
+            const variant=variants[((variantIndex%variants.length)+variants.length)%variants.length];
+            const woodMat=new THREE.MeshStandardMaterial({color:variantIndex%2?0x68462f:0x765033,roughness:.92,flatShading:true});
+            const edgeMat=new THREE.MeshStandardMaterial({color:0x4b3021,roughness:.95,flatShading:true});
+            const sailMat=new THREE.MeshStandardMaterial({color:variant.sail,roughness:.98,side:THREE.DoubleSide});
+            const ropeMat=new THREE.MeshStandardMaterial({color:0x8b765c,roughness:1.0});
 
             // 船底は先端を絞った木製の船形に
             const hullShape = new THREE.Shape();
@@ -1705,14 +1704,14 @@
             }
 
             // マストは船体に差し込み、帆の縦辺をマストにぴったり合わせる
-            const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 1.75, 8), edgeMat);
-            mast.position.set(-0.18, 0.88, 0);
+            const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, variant.mast, 8), edgeMat);
+            mast.position.set(-0.18, variant.mast / 2 + 0.005, 0);
             boat.add(mast);
 
             const sailShape = new THREE.Shape();
             sailShape.moveTo(0.015, 0.12);
-            sailShape.lineTo(0.015, 1.62);
-            sailShape.lineTo(0.92, 0.34);
+            sailShape.lineTo(0.015, variant.mast - 0.13);
+            sailShape.lineTo(variantIndex % 2 === 0 ? 0.92 : 0.72, 0.34);
             sailShape.closePath();
             const sail = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), sailMat);
             sail.position.set(-0.18, 0.02, 0.025);
@@ -1722,12 +1721,12 @@
             const flagShape = new THREE.Shape();
             flagShape.moveTo(0.015, 0);
             flagShape.lineTo(0.015, 0.28);
-            flagShape.lineTo(0.42, 0.19);
+            flagShape.lineTo(0.42 + (variantIndex % 2) * 0.12, 0.19);
             flagShape.closePath();
             const flag = new THREE.Mesh(new THREE.ShapeGeometry(flagShape), new THREE.MeshStandardMaterial({
-                color: 0x9b5540, roughness: 0.95, side: THREE.DoubleSide
+                color: variant.flag, roughness: 0.95, side: THREE.DoubleSide
             }));
-            flag.position.set(-0.18, 1.73, 0.035);
+            flag.position.set(-0.18, variant.mast + 0.005, 0.035);
             boat.add(flag);
 
             // 控えめな帆の支え綱
@@ -1736,13 +1735,11 @@
             rope.rotation.z = -0.42;
             boat.add(rope);
 
-            boat.scale.setScalar(scale);
-            return boat;
+            if(variant.cabin){const cabin=new THREE.Mesh(new THREE.BoxGeometry(.42,.25,.42),woodMat);cabin.position.set(-.72,.22,0);boat.add(cabin);const roof=new THREE.Mesh(new THREE.BoxGeometry(.5,.06,.48),edgeMat);roof.position.set(-.72,.38,0);boat.add(roof);}
+            if(variant.secondSail){const smallMast=new THREE.Mesh(new THREE.CylinderGeometry(.022,.03,.85,7),edgeMat);smallMast.position.set(.62,.48,0);boat.add(smallMast);const smallShape=new THREE.Shape();smallShape.moveTo(0,.08);smallShape.lineTo(0,.78);smallShape.lineTo(.42,.22);smallShape.closePath();const smallSail=new THREE.Mesh(new THREE.ShapeGeometry(smallShape),sailMat);smallSail.position.set(.62,.04,.035);boat.add(smallSail);}
+            boat.scale.setScalar(scale*variant.size);boat.userData.modelVariant=variantIndex;return boat;
         }
-
-        function createPreviewBoat() {
-            return createBoatModel(1.6);
-        }
+        function createPreviewBoat(){return createBoatModel(1.6,Math.floor(Math.random()*5));}
         function createPreviewGlassBall() {
             const group = new THREE.Group();
             
@@ -2107,6 +2104,16 @@
             pointerDownPos.y = event.clientY;
         }
 
+        function getFloaterAudioGain(group) {
+            const worldPosition=new THREE.Vector3();group.getWorldPosition(worldPosition);
+            const distance=camera.position.distanceTo(worldPosition),normalized=THREE.MathUtils.clamp(distance/180,0,1);
+            return .12+.88*Math.pow(1-normalized,1.45);
+        }
+        function playSoftFloaterTap(distanceGain=1) {
+            if(!audioCtx||audioCtx.state!=='running')return;
+            const now=audioCtx.currentTime;
+            [740,988].forEach((frequency,index)=>{const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.setValueAtTime(frequency,now+index*.035);gain.gain.setValueAtTime(.0001,now+index*.035);gain.gain.linearRampToValueAtTime(.035*distanceGain,now+index*.035+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+index*.035+.28);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now+index*.035);osc.stop(now+index*.035+.32);});
+        }
         function onPointerUp(event) {
             if (event.target !== renderer.domElement) return;
 
@@ -2134,7 +2141,9 @@
                 
                 if (intersects.length > 0) {
                     recordFloaterDiscovery(group);
+                    const distanceGain=getFloaterAudioGain(group);
                     if (group.userData.isBottle) {
+                        playSoftFloaterTap(distanceGain);
                         showMessage(group.userData.message);
                         group.userData.isSinking = true; 
                         
@@ -2148,27 +2157,29 @@
                         if (string) string.visible = false;
 
                     } else if (group.userData.isLantern) {
-                        playChimeSound();
+                        playChimeSound(distanceGain);
                         group.userData.glowStartTime = performance.now();
                         group.userData.isGlowing = true;
                         spawnLanternParticles(group.position);
                     } else if (group.userData.isWatch) {
-                        playWatchSoundAndShowTime();
+                        playWatchSoundAndShowTime(distanceGain);
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.15;
                     } else if (group.userData.isRecord) {
-                        playRecordSound();
+                        playRecordSound(distanceGain);
                         spawnRipple(group.position);
                         group.userData.rotSpeed += 0.2; 
                     } else if (group.userData.isGlassBall) {
-                        playGlassSound();
+                        playGlassSound(distanceGain);
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.3; 
                     } else if (group.userData.isBoat) {
+                        playSoftFloaterTap(distanceGain);
                         showMessage("小さな木の船が、静かな波に揺られている。\n\nこの船にも、まだ見ぬ海の向こうへ続く旅があるのだろう。", false);
                         spawnRipple(group.position);
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.04;
                     } else {
+                        playSoftFloaterTap(distanceGain * .72);
                         group.userData.isPushed = true;
                         group.userData.pushStartTime = performance.now();
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.1; 
@@ -2863,7 +2874,7 @@
 
             // 小さな木製の船：素朴な帆船を少数だけ漂わせる
             for (let i = 0; i < boatCount; i++) {
-                const boat = createBoatModel(1.25);
+                const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
                 boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
                 boat.rotation.y = Math.random() * Math.PI * 2;
                 boat.userData = {
