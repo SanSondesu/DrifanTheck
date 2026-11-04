@@ -23,7 +23,7 @@
 
         function createStars() {
             const starsGeometry = new THREE.BufferGeometry();
-            const starsCount = 10000; 
+            const starsCount = DrifanConfig.population.stars; 
             const posArray = new Float32Array(starsCount * 3);
             const colorArray = new Float32Array(starsCount * 3);
             const sizeArray = new Float32Array(starsCount);
