@@ -1875,20 +1875,29 @@
             }
         }
 
+        let previewLastFrame = 0;
         function animatePreview() {
-            if(previewReqId) cancelAnimationFrame(previewReqId);
-            function renderP() {
-                previewReqId = requestAnimationFrame(renderP);
-                if(document.getElementById('notebook-container').style.display === 'flex') {
-                    if(previewModel && !previewIsDragging) {
-                        previewModel.rotation.y += 0.005; // 触っていない時はゆっくり回る
-                    }
-                    if(previewRenderer) {
-                        previewRenderer.render(previewScene, previewCamera);
-                    }
+            if (previewReqId) return;
+            previewLastFrame = performance.now();
+            function renderP(now) {
+                const notebook = document.getElementById('notebook-container');
+                if (!notebook || notebook.style.display !== 'flex') {
+                    previewReqId = null;
+                    previewLastFrame = 0;
+                    return;
                 }
+                previewReqId = requestAnimationFrame(renderP);
+                const delta = Math.min((now - previewLastFrame) / 1000, 0.05);
+                previewLastFrame = now;
+                if (previewModel && !previewIsDragging) previewModel.rotation.y += 0.3 * delta;
+                if (previewRenderer) previewRenderer.render(previewScene, previewCamera);
             }
-            renderP();
+            previewReqId = requestAnimationFrame(renderP);
+        }
+        function stopPreviewAnimation() {
+            if (previewReqId) cancelAnimationFrame(previewReqId);
+            previewReqId = null;
+            previewLastFrame = 0;
         }
 
         function setupUI() {
@@ -1905,6 +1914,7 @@
                 initAudio();
                 updateNotebookUI();
                 document.getElementById('notebook-container').style.display = 'flex';
+                animatePreview();
                 // 表示直後にリサイズを走らせることでCanvasサイズを確実に合わせる
                 setTimeout(resizePreview, 20);
             });
@@ -1937,6 +1947,7 @@
             if (closeNbBtn) closeNbBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 document.getElementById('notebook-container').style.display = 'none';
+                stopPreviewAnimation();
             });
             
             const sendBtn = document.getElementById('send-btn');
@@ -1963,7 +1974,6 @@
             initCircularSlider();
             initDialPicker();
             initPreview();
-            animatePreview();
         }
 
         function initDialPicker() {
@@ -3627,16 +3637,20 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function animate() {
+        let lastRenderTime = 0;
+        function animate(now) {
             requestAnimationFrame(animate);
-            render();
+            render(now);
         }
 
-        function render() {
-            const time = performance.now() * 0.001;
-            const nowMs = performance.now();
+        function render(now = performance.now()) {
+            const deltaSeconds = lastRenderTime ? Math.min((now - lastRenderTime) / 1000, 0.05) : 1 / 60;
+            lastRenderTime = now;
+            const frameScale = deltaSeconds * 60;
+            const time = now * 0.001;
+            const nowMs = now;
 
-            water.material.uniforms['time'].value += 0.2 / 60.0; 
+            water.material.uniforms['time'].value += 0.2 * deltaSeconds; 
             
             if (bioluminescence) {
                 bioluminescence.material.uniforms['time'].value = time;
@@ -3649,7 +3663,7 @@
 
             for (let i = ripples.length - 1; i >= 0; i--) {
                 let r = ripples[i];
-                r.life += r.speed;
+                r.life += r.speed * frameScale;
                 if (r.life >= 1.0) {
                     scene.remove(r.mesh);
                     if (r.mesh.material) r.mesh.material.dispose();
@@ -3661,7 +3675,7 @@
             }
 
             // 海鳥の更新
-            currentBirdOpacity += (targetBirdOpacity - currentBirdOpacity) * 0.02;
+            currentBirdOpacity += (targetBirdOpacity - currentBirdOpacity) * (1 - Math.pow(0.98, frameScale));
             if (birdsGroup) {
                 if (currentBirdOpacity > 0.01) {
                     birdsGroup.visible = true;
@@ -3671,7 +3685,7 @@
                     
                     birdsGroup.children.forEach(bird => {
                         const ud = bird.userData;
-                        ud.orbitPhase -= ud.orbitSpeed * 0.01; 
+                        ud.orbitPhase -= ud.orbitSpeed * 0.01 * frameScale; 
                         
                         bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
                         bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
@@ -3730,16 +3744,16 @@
                             const pushFactor = Math.pow(1.0 - (dist / avoidRadius), 2.0) * 0.15;
                             forceX = (dx / dist) * pushFactor;
                             forceZ = (dz / dist) * pushFactor;
-                            f.userData.rotSpeed += (Math.random() - 0.5) * 0.001;
+                            f.userData.rotSpeed += (Math.random() - 0.5) * 0.001 * frameScale;
                         }
                     }
 
-                    f.userData.rotSpeed += (f.userData.baseRotSpeed - f.userData.rotSpeed) * 0.05;
+                    f.userData.rotSpeed += (f.userData.baseRotSpeed - f.userData.rotSpeed) * (1 - Math.pow(0.95, frameScale));
 
-                    f.userData.vx += (f.userData.baseSpeedX + forceX - f.userData.vx) * 0.06;
-                    f.userData.vz += (f.userData.baseSpeedZ + forceZ - f.userData.vz) * 0.06;
-                    f.position.x += f.userData.vx;
-                    f.position.z += f.userData.vz;
+                    f.userData.vx += (f.userData.baseSpeedX + forceX - f.userData.vx) * (1 - Math.pow(0.94, frameScale));
+                    f.userData.vz += (f.userData.baseSpeedZ + forceZ - f.userData.vz) * (1 - Math.pow(0.94, frameScale));
+                    f.position.x += f.userData.vx * frameScale;
+                    f.position.z += f.userData.vz * frameScale;
                     
                     if (f.position.x < -150) { 
                         f.userData.encounterId = null;
@@ -3761,9 +3775,9 @@
 
                 if (f.userData.isBottle) {
                     if (f.userData.isSinking) {
-                        f.position.y -= 0.015; 
-                        f.rotation.x += 0.01;  
-                        f.rotation.z += 0.01;
+                        f.position.y -= 0.015 * frameScale; 
+                        f.rotation.x += 0.01 * frameScale;  
+                        f.rotation.z += 0.01 * frameScale;
                         
                         if (f.position.y < -5.0) {
                             f.userData.isSinking = false;
@@ -3790,7 +3804,7 @@
                         f.position.y = -0.05 + Math.sin(time * 1.6 + f.userData.phase) * f.userData.bobHeight;
                         f.rotation.x = Math.sin(time * 1.4 + f.userData.phase) * 0.12;
                         f.rotation.z = Math.cos(time * 1.8 + f.userData.phase) * 0.08;
-                        f.rotation.y += f.userData.rotSpeed;
+                        f.rotation.y += f.userData.rotSpeed * frameScale;
                     }
                 } else if (f.userData.isLantern) {
                     let glowScale = 1.0;
@@ -3886,15 +3900,15 @@
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
-                p.life -= p.decay;
+                p.life -= p.decay * frameScale;
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
                     p.mesh.material.dispose();
                     particles.splice(i, 1);
                 } else {
-                    p.mesh.position.x += p.vx + Math.sin(time * 2.0 + p.phase) * 0.006;
-                    p.mesh.position.y += p.vy;
-                    p.mesh.position.z += p.vz + Math.cos(time * 1.5 + p.phase) * 0.006;
+                    p.mesh.position.x += (p.vx + Math.sin(time * 2.0 + p.phase) * 0.006) * frameScale;
+                    p.mesh.position.y += p.vy * frameScale;
+                    p.mesh.position.z += (p.vz + Math.cos(time * 1.5 + p.phase) * 0.006) * frameScale;
                     
                     if (p.mesh.material.uniforms) {
                         p.mesh.material.uniforms.opacity.value = p.life;
@@ -3909,15 +3923,15 @@
             for (let i = whaleParticles.length - 1; i >= 0; i--) {
                 let p = whaleParticles[i];
                 p.life -= p.decay;
-                p.vy -= 0.03; 
+                p.vy -= 0.03 * frameScale; 
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
                     p.mesh.material.dispose();
                     whaleParticles.splice(i, 1);
                 } else {
-                    p.mesh.position.x += p.vx;
+                    p.mesh.position.x += p.vx * frameScale;
                     p.mesh.position.y += p.vy;
-                    p.mesh.position.z += p.vz;
+                    p.mesh.position.z += p.vz * frameScale;
                     p.mesh.material.opacity = p.life * 0.6;
                     const scale = p.life * 2.5;
                     p.mesh.scale.set(scale, scale, scale);
