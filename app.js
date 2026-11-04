@@ -89,12 +89,20 @@ let scene, camera, renderer, water, sky;
         let gainNode;
 
         let uiTimeout;
-        const UI_HIDE_DELAY = 4000;
+        const UI_HIDE_DELAY = (window.DrifanConfig && DrifanConfig.timing.uiHideDelay) || 4000;
 
         window.onload = function () {
-            init();
-            animate();
-            initAudio();
+            try {
+                restoreSavedProgress();
+                const initialized = init();
+                if (initialized === false) return;
+                animate();
+                initAudio();
+            } catch (error) {
+                console.error('DrifanTheck initialization failed:', error);
+                if (window.DrifanRuntime) DrifanRuntime.show('3D空間の初期化に失敗しました。ページを再読み込みしてお試しください。');
+                return;
+            }
             
             const startScreen = document.getElementById('start-screen');
             const startBtn = document.getElementById('start-btn');
@@ -120,6 +128,35 @@ let scene, camera, renderer, water, sky;
                 });
             }
         };
+
+        function restoreSavedProgress() {
+            if (!window.DrifanStorage) return;
+            const saved = DrifanStorage.load();
+            readMessagesList = saved.messages.slice();
+            readBottlesCount = saved.bottleCount;
+            floaterDiscovery = {};
+            touchedItemsSet = new Set();
+            Object.keys(saved.discoveries).forEach(name => {
+                const count = Number(saved.discoveries[name] && saved.discoveries[name].count);
+                if (Number.isFinite(count) && count > 0) {
+                    floaterDiscovery[name] = { count: Math.floor(count) };
+                    touchedItemsSet.add(name);
+                }
+            });
+            currentProgress = Number.isFinite(saved.settings.timeProgress)
+                ? saved.settings.timeProgress
+                : ((window.DrifanConfig && DrifanConfig.world.defaultTimeProgress) || (17.5 / 24));
+        }
+
+        function saveProgress() {
+            if (!window.DrifanStorage) return;
+            DrifanStorage.save({
+                messages: readMessagesList,
+                discoveries: floaterDiscovery,
+                bottleCount: readBottlesCount,
+                timeProgress: currentProgress
+            });
+        }
 
         function resetUITimer() {
             const uiContainer = document.getElementById('ui-container');
@@ -202,7 +239,7 @@ let scene, camera, renderer, water, sky;
 
         function scheduleNextWave() {
             if(!audioCtx) return;
-            const interval = 6600 + Math.random() * 1000; 
+            const interval = ((window.DrifanConfig && DrifanConfig.audio.waveIntervalMin) || 6600) + Math.random() * ((window.DrifanConfig && DrifanConfig.audio.waveIntervalRange) || 1000); 
             setTimeout(() => {
                 playWaveSound();
                 scheduleNextWave();
@@ -426,8 +463,14 @@ let scene, camera, renderer, water, sky;
             camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
             camera.position.set(0, 5, 16);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            try {
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+            } catch (error) {
+                console.error('WebGL renderer creation failed:', error);
+                if (window.DrifanRuntime) DrifanRuntime.show('WebGLを利用できないため、3D表示を開始できませんでした。ブラウザの設定や対応状況をご確認ください。');
+                return false;
+            }
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, (window.DrifanConfig && DrifanConfig.limits.pixelRatio) || 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 0.6; 
@@ -505,7 +548,11 @@ let scene, camera, renderer, water, sky;
             window.addEventListener('wheel', resetUITimer);
             
             setupUI();
-            setSliderToProgress(17.5 / 24); 
+            setSliderToProgress(Number.isFinite(currentProgress) ? currentProgress : 17.5 / 24);
+            const counter = document.getElementById('bottle-counter');
+            if (counter) counter.innerHTML = '🍾 <span class="bottle-count-num">' + readBottlesCount + '</span>';
+            updateNotebookUI();
+            return true;
         }
         
         function getFloaterItemName(group) {
@@ -528,6 +575,7 @@ let scene, camera, renderer, water, sky;
             touchedItemsSet.add(itemName);
             if (!floaterDiscovery[itemName]) floaterDiscovery[itemName] = { count: 0 };
             floaterDiscovery[itemName].count += 1;
+            saveProgress();
             updateNotebookUI(itemName);
             return true;
         }
@@ -1179,6 +1227,7 @@ let scene, camera, renderer, water, sky;
             
             let newProgress = (currentHours + currentMinutes / 60) / 24;
             setSliderToProgress(newProgress);
+            saveProgress();
             
             document.getElementById('dial-picker').style.display = 'none';
         }
@@ -1204,6 +1253,7 @@ let scene, camera, renderer, water, sky;
             });
             
             window.addEventListener('pointerup', () => {
+                if (isDraggingSlider) saveProgress();
                 isDraggingSlider = false;
             });
         }
@@ -1405,6 +1455,7 @@ let scene, camera, renderer, water, sky;
                     }, 500);
                 }
             }
+            saveProgress();
         }
 
         function createRock() {
@@ -1612,7 +1663,7 @@ let scene, camera, renderer, water, sky;
             createSingleBottle(message, pos);
             spawnRipple(pos); 
 
-            const maxBottles = 40; 
+            const maxBottles = (window.DrifanConfig && DrifanConfig.limits.maxPlayerBottles) || 40; 
             let currentBottleCount = 0;
             for (let i = 0; i < floaters.length; i++) {
                 if (floaters[i].userData.isBottle) currentBottleCount++;
@@ -1622,14 +1673,12 @@ let scene, camera, renderer, water, sky;
                 for (let i = 0; i < floaters.length; i++) {
                     if (floaters[i].userData.isBottle && !floaters[i].userData.isSinking) {
                         const oldBottle = floaters[i];
-                        scene.remove(oldBottle);
-                        oldBottle.traverse((child) => {
-                            if (child.isMesh) {
-                                if (child.geometry) child.geometry.dispose();
-                                if (child.material) child.material.dispose();
-                            }
-                        });
-                        floaters.splice(i, 1);
+                        if (window.DrifanObjects) {
+                            DrifanObjects.removeSceneObject(scene, oldBottle, { dispose: true, array: floaters });
+                        } else {
+                            scene.remove(oldBottle);
+                            floaters.splice(i, 1);
+                        }
                         break;
                     }
                 }
@@ -2768,7 +2817,7 @@ let scene, camera, renderer, water, sky;
         }
 
         function render(now = performance.now()) {
-            const deltaSeconds = lastRenderTime ? Math.min((now - lastRenderTime) / 1000, 0.05) : 1 / 60;
+            const deltaSeconds = lastRenderTime ? Math.min((now - lastRenderTime) / 1000, (window.DrifanConfig && DrifanConfig.limits.maxFrameDelta) || 0.05) : 1 / 60;
             lastRenderTime = now;
             const frameScale = deltaSeconds * 60;
             const time = now * 0.001;
@@ -2789,9 +2838,12 @@ let scene, camera, renderer, water, sky;
                 let r = ripples[i];
                 r.life += r.speed * frameScale;
                 if (r.life >= 1.0) {
-                    scene.remove(r.mesh);
-                    if (r.mesh.material) r.mesh.material.dispose();
-                    if (r.mesh.geometry) r.mesh.geometry.dispose();
+                    if (window.DrifanObjects) DrifanObjects.removeSceneObject(scene, r.mesh, { dispose: true });
+                    else {
+                        scene.remove(r.mesh);
+                        if (r.mesh.material) r.mesh.material.dispose();
+                        if (r.mesh.geometry) r.mesh.geometry.dispose();
+                    }
                     ripples.splice(i, 1);
                 } else {
                     r.mesh.material.uniforms.progress.value = r.life;
