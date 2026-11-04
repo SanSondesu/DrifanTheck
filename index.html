@@ -2204,12 +2204,27 @@
             raycaster.setFromCamera(mouse, camera);
 
             const activeFloaters = floaters.filter(f => !f.userData.isSinking);
-            
-            for (let i = 0; i < activeFloaters.length; i++) {
-                const group = activeFloaters[i];
+            let tappedGroup = null;
+            let nearestHitDistance = Infinity;
+            for (const group of activeFloaters) {
                 const intersects = raycaster.intersectObjects(group.children, true);
-                
-                if (intersects.length > 0) {
+                if (intersects.length && intersects[0].distance < nearestHitDistance) {
+                    nearestHitDistance = intersects[0].distance;
+                    tappedGroup = group;
+                }
+                const hitRadius = group.userData.tapHitRadius || 0;
+                if (hitRadius > 0) {
+                    const center = group.position.clone();
+                    center.y += group.userData.tapHitCenterY || 0;
+                    const hitPoint = raycaster.ray.intersectSphere(new THREE.Sphere(center, hitRadius), new THREE.Vector3());
+                    if (hitPoint) {
+                        const distance = raycaster.ray.origin.distanceTo(hitPoint);
+                        if (distance < nearestHitDistance) { nearestHitDistance = distance; tappedGroup = group; }
+                    }
+                }
+            }
+            if (tappedGroup) {
+                const group = tappedGroup;
                     recordFloaterDiscovery(group);
                     const distanceGain=getFloaterAudioGain(group);
                     if (group.userData.isBottle) {
@@ -2254,11 +2269,9 @@
                         group.userData.pushStartTime = performance.now();
                         group.userData.rotSpeed += (Math.random() - 0.5) * 0.1; 
                     }
-                    break;
-                }
             }
         }
-        
+
         function showMessage(text, countBottle = true) {
             const msgText = document.getElementById('message-text');
             if (msgText) msgText.innerText = text;
@@ -3003,7 +3016,9 @@
                 f.updateMatrixWorld(true);
                 const bounds = new THREE.Box3().setFromObject(f);
                 const size = bounds.getSize(new THREE.Vector3());
-                f.userData.collisionRadius = Math.max(size.x, size.z) * 0.42 + 0.35;
+                f.userData.collisionRadius = Math.max(size.x, size.z) * 0.46 + 0.28;
+                f.userData.tapHitRadius = Math.max(size.x, size.y, size.z) * 0.52 + 0.35;
+                f.userData.tapHitCenterY = bounds.getCenter(new THREE.Vector3()).y - f.position.y;
             });
         }
 
@@ -3864,33 +3879,32 @@
             });
 
             // 漂流物同士の重なりを防ぐ。衝突時は押し分け、進行方向も少しだけ補正する
-            for (let i = 0; i < floaters.length; i++) {
-                const a = floaters[i];
-                if (a.userData.isBottle && a.userData.isSinking) continue;
-                for (let j = i + 1; j < floaters.length; j++) {
-                    const b = floaters[j];
-                    if (b.userData.isBottle && b.userData.isSinking) continue;
-                    const dx = b.position.x - a.position.x;
-                    const dz = b.position.z - a.position.z;
-                    const minDist = (a.userData.collisionRadius || 1.5) + (b.userData.collisionRadius || 1.5);
-                    const distSq = dx * dx + dz * dz;
-                    if (distSq >= minDist * minDist) continue;
-                    const dist = Math.sqrt(Math.max(distSq, 0.0001));
-                    const nx = distSq < 0.0001 ? (Math.random() < 0.5 ? 1 : -1) : dx / dist;
-                    const nz = distSq < 0.0001 ? 0 : dz / dist;
-                    const overlap = minDist - dist;
-                    const push = Math.min(overlap * 0.52, 0.45);
-                    a.position.x -= nx * push;
-                    a.position.z -= nz * push;
-                    b.position.x += nx * push;
-                    b.position.z += nz * push;
-                    const relativeSpeed = (b.userData.vx - a.userData.vx) * nx + (b.userData.vz - a.userData.vz) * nz;
-                    if (relativeSpeed < 0) {
-                        const impulse = -relativeSpeed * 0.32;
-                        a.userData.vx -= nx * impulse * 0.5;
-                        a.userData.vz -= nz * impulse * 0.5;
-                        b.userData.vx += nx * impulse * 0.5;
-                        b.userData.vz += nz * impulse * 0.5;
+            // 3回の解決パスで密集時の押し戻し不足を減らす
+            for (let pass = 0; pass < 3; pass++) {
+                for (let i = 0; i < floaters.length; i++) {
+                    const a = floaters[i];
+                    if (a.userData.isBottle && a.userData.isSinking) continue;
+                    for (let j = i + 1; j < floaters.length; j++) {
+                        const b = floaters[j];
+                        if (b.userData.isBottle && b.userData.isSinking) continue;
+                        const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
+                        const minDist = (a.userData.collisionRadius || 1.5) + (b.userData.collisionRadius || 1.5);
+                        const distSq = dx * dx + dz * dz;
+                        if (distSq >= minDist * minDist) continue;
+                        const dist = Math.sqrt(Math.max(distSq, 0.0001));
+                        const nx = distSq < 0.0001 ? (Math.random() < 0.5 ? 1 : -1) : dx / dist;
+                        const nz = distSq < 0.0001 ? 0 : dz / dist;
+                        const push = (minDist - dist) * 0.52;
+                        a.position.x -= nx * push; a.position.z -= nz * push;
+                        b.position.x += nx * push; b.position.z += nz * push;
+                        if (pass === 0) {
+                            const relativeSpeed = (b.userData.vx - a.userData.vx) * nx + (b.userData.vz - a.userData.vz) * nz;
+                            if (relativeSpeed < 0) {
+                                const impulse = -relativeSpeed * 0.32;
+                                a.userData.vx -= nx * impulse * 0.5; a.userData.vz -= nz * impulse * 0.5;
+                                b.userData.vx += nx * impulse * 0.5; b.userData.vz += nz * impulse * 0.5;
+                            }
+                        }
                     }
                 }
             }
