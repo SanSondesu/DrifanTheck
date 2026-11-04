@@ -1875,20 +1875,29 @@
             }
         }
 
+        let previewLastFrame = 0;
         function animatePreview() {
-            if(previewReqId) cancelAnimationFrame(previewReqId);
-            function renderP() {
-                previewReqId = requestAnimationFrame(renderP);
-                if(document.getElementById('notebook-container').style.display === 'flex') {
-                    if(previewModel && !previewIsDragging) {
-                        previewModel.rotation.y += 0.005; // 触っていない時はゆっくり回る
-                    }
-                    if(previewRenderer) {
-                        previewRenderer.render(previewScene, previewCamera);
-                    }
+            if (previewReqId) return;
+            previewLastFrame = performance.now();
+            function renderP(now) {
+                const notebook = document.getElementById('notebook-container');
+                if (!notebook || notebook.style.display !== 'flex') {
+                    previewReqId = null;
+                    previewLastFrame = 0;
+                    return;
                 }
+                previewReqId = requestAnimationFrame(renderP);
+                const delta = Math.min((now - previewLastFrame) / 1000, 0.05);
+                previewLastFrame = now;
+                if (previewModel && !previewIsDragging) previewModel.rotation.y += 0.3 * delta;
+                if (previewRenderer) previewRenderer.render(previewScene, previewCamera);
             }
-            renderP();
+            previewReqId = requestAnimationFrame(renderP);
+        }
+        function stopPreviewAnimation() {
+            if (previewReqId) cancelAnimationFrame(previewReqId);
+            previewReqId = null;
+            previewLastFrame = 0;
         }
 
         function setupUI() {
@@ -1905,6 +1914,7 @@
                 initAudio();
                 updateNotebookUI();
                 document.getElementById('notebook-container').style.display = 'flex';
+                animatePreview();
                 // 表示直後にリサイズを走らせることでCanvasサイズを確実に合わせる
                 setTimeout(resizePreview, 20);
             });
@@ -1937,6 +1947,7 @@
             if (closeNbBtn) closeNbBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 document.getElementById('notebook-container').style.display = 'none';
+                stopPreviewAnimation();
             });
             
             const sendBtn = document.getElementById('send-btn');
@@ -1963,7 +1974,6 @@
             initCircularSlider();
             initDialPicker();
             initPreview();
-            animatePreview();
         }
 
         function initDialPicker() {
@@ -2194,57 +2204,44 @@
             raycaster.setFromCamera(mouse, camera);
 
             const activeFloaters = floaters.filter(f => !f.userData.isSinking);
-            
-            for (let i = 0; i < activeFloaters.length; i++) {
-                const group = activeFloaters[i];
+            let tappedGroup = null;
+            let nearestHitDistance = Infinity;
+            for (const group of activeFloaters) {
                 const intersects = raycaster.intersectObjects(group.children, true);
-                
-                if (intersects.length > 0) {
-                    recordFloaterDiscovery(group);
-                    const distanceGain=getFloaterAudioGain(group);
-                    if (group.userData.isBottle) {
-                        playSoftFloaterTap(distanceGain);
-                        showMessage(group.userData.message);
-                        group.userData.isSinking = true; 
-                        
-                        spawnRipple(group.position); 
-
-                        const cork = group.getObjectByName("cork");
-                        const letter = group.getObjectByName("letter");
-                        const string = group.getObjectByName("string");
-                        if (cork) cork.visible = false;
-                        if (letter) letter.visible = false;
-                        if (string) string.visible = false;
-
-                    } else if (group.userData.isLantern) {
-                        playChimeSound(distanceGain);
-                        group.userData.glowStartTime = performance.now();
-                        group.userData.isGlowing = true;
-                        spawnLanternParticles(group.position);
-                    } else if (group.userData.isWatch) {
-                        playWatchSoundAndShowTime(distanceGain);
-                        spawnRipple(group.position);
-                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.15;
-                    } else if (group.userData.isRecord) {
-                        playRecordSound(distanceGain);
-                        spawnRipple(group.position);
-                        group.userData.rotSpeed += 0.2; 
-                    } else if (group.userData.isGlassBall) {
-                        playGlassSound(distanceGain);
-                        spawnRipple(group.position);
-                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.3; 
-                    } else if (group.userData.isBoat) {
-                        playSoftFloaterTap(distanceGain);
-                        showMessage("小さな木の船が、静かな波に揺られている。\n\nこの船にも、まだ見ぬ海の向こうへ続く旅があるのだろう。", false);
-                        spawnRipple(group.position);
-                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.04;
-                    } else {
-                        playSoftFloaterTap(distanceGain * .72);
-                        group.userData.isPushed = true;
-                        group.userData.pushStartTime = performance.now();
-                        group.userData.rotSpeed += (Math.random() - 0.5) * 0.1; 
+                if (intersects.length && intersects[0].distance < nearestHitDistance) {
+                    nearestHitDistance = intersects[0].distance;
+                    tappedGroup = group;
+                }
+                const hitRadius = group.userData.tapHitRadius || 0;
+                if (hitRadius > 0) {
+                    const center = group.position.clone();
+                    center.y += group.userData.tapHitCenterY || 0;
+                    const hitPoint = raycaster.ray.intersectSphere(new THREE.Sphere(center, hitRadius), new THREE.Vector3());
+                    if (hitPoint) {
+                        const d = raycaster.ray.origin.distanceTo(hitPoint);
+                        if (d < nearestHitDistance) { nearestHitDistance = d; tappedGroup = group; }
                     }
-                    break;
+                }
+            }
+            if (tappedGroup) {
+                const group = tappedGroup;
+                recordFloaterDiscovery(group);
+                const distanceGain = getFloaterAudioGain(group);
+                if (group.userData.isBottle) {
+                    playSoftFloaterTap(distanceGain); showMessage(group.userData.message); group.userData.isSinking = true; spawnRipple(group.position);
+                    ["cork", "letter", "string"].forEach(name => { const child = group.getObjectByName(name); if (child) child.visible = false; });
+                } else if (group.userData.isLantern) {
+                    playChimeSound(distanceGain); group.userData.glowStartTime = performance.now(); group.userData.isGlowing = true; spawnLanternParticles(group.position);
+                } else if (group.userData.isWatch) {
+                    playWatchSoundAndShowTime(distanceGain); spawnRipple(group.position); group.userData.rotSpeed += (Math.random() - 0.5) * 0.15;
+                } else if (group.userData.isRecord) {
+                    playRecordSound(distanceGain); spawnRipple(group.position); group.userData.rotSpeed += 0.2;
+                } else if (group.userData.isGlassBall) {
+                    playGlassSound(distanceGain); spawnRipple(group.position); group.userData.rotSpeed += (Math.random() - 0.5) * 0.3;
+                } else if (group.userData.isBoat) {
+                    playSoftFloaterTap(distanceGain); showMessage("小さな木の船が、静かな波に揺られている。\\n\\nこの船にも、まだ見ぬ海の向こうへ続く旅があるのだろう。", false); spawnRipple(group.position); group.userData.rotSpeed += (Math.random() - 0.5) * 0.04;
+                } else {
+                    playSoftFloaterTap(distanceGain * 0.72); group.userData.isPushed = true; group.userData.pushStartTime = performance.now(); group.userData.rotSpeed += (Math.random() - 0.5) * 0.1;
                 }
             }
         }
@@ -2482,1401 +2479,32 @@
 
             const maxBottles = 40; 
             let currentBottleCount = 0;
-            for (let i = 0; i < floaters.length; i++) {
-                if (floaters[i].userData.isBottle) currentBottleCount++;
-            }
-            
-            if (currentBottleCount > maxBottles) {
+            // 3回の解決パスで密集時の押し戻し不足を減らす
+            for (let pass = 0; pass < 3; pass++) {
                 for (let i = 0; i < floaters.length; i++) {
-                    if (floaters[i].userData.isBottle && !floaters[i].userData.isSinking) {
-                        const oldBottle = floaters[i];
-                        scene.remove(oldBottle);
-                        oldBottle.traverse((child) => {
-                            if (child.isMesh) {
-                                if (child.geometry) child.geometry.dispose();
-                                if (child.material) child.material.dispose();
-                            }
-                        });
-                        floaters.splice(i, 1);
-                        break;
-                    }
-                }
-            }
-        }
-
-        function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15, boatCount = 5) {
-            floaters = [];
-
-            for(let i=0; i<bottleCount; i++) {
-                createSingleBottle();
-            }
-
-            function createBentSegment(woodMaterial, radiusBase, radiusMid, radiusTip, len1, len2, bendAngleY, bendAngleZ) {
-                const group = new THREE.Group();
-
-                const geo1 = new THREE.CylinderGeometry(radiusMid, radiusBase, len1, 8);
-                const mesh1 = new THREE.Mesh(geo1, woodMaterial);
-                mesh1.rotation.z = -Math.PI / 2;
-                mesh1.position.x = len1 / 2;
-                group.add(mesh1);
-
-                const joint = new THREE.Group();
-                joint.position.set(len1, 0, 0);
-                joint.rotation.y = bendAngleY;
-                joint.rotation.z = bendAngleZ;
-
-                const geo2 = new THREE.CylinderGeometry(radiusTip, radiusMid, len2, 8);
-                const mesh2 = new THREE.Mesh(geo2, woodMaterial);
-                mesh2.rotation.z = -Math.PI / 2;
-                mesh2.position.x = len2 / 2;
-                joint.add(mesh2);
-
-                group.add(joint);
-                group.position.x = -(len1 + len2 * Math.cos(bendAngleY)) / 2;
-                return { group, joint };
-            }
-
-            for (let i = 0; i < woodCount; i++) {
-                const floaterGroup = new THREE.Group();
-                const typeChoice = Math.random();
-                const woodMaterial = new THREE.MeshStandardMaterial({
-                    color: new THREE.Color().setHSL(0.075 + Math.random() * 0.025, 0.28 + Math.random() * 0.18, 0.19 + Math.random() * 0.13),
-                    roughness: 0.94,
-                    metalness: 0.02,
-                    flatShading: true
-                });
-
-                const addLog = (parent, length, radius, x, y, z, taper = 0.72) => {
-                    const geo = new THREE.CylinderGeometry(radius * taper, radius, length, 7);
-                    const mesh = new THREE.Mesh(geo, woodMaterial);
-                    mesh.rotation.z = Math.PI / 2;
-                    mesh.position.set(x, y, z);
-                    parent.add(mesh);
-                    return mesh;
-                };
-
-                if (typeChoice < 0.22) {
-                    // 細長い流木：枝の根元を幹に重ね、一本につながった形にする
-                    const mainLength = 5.8 + Math.random() * 2.8;
-                    const mainRadius = 0.11 + Math.random() * 0.06;
-                    addLog(floaterGroup, mainLength, mainRadius, 0, 0, 0, 0.5);
-
-                    if (Math.random() < 0.55) {
-                        const branchLength = 1.35 + Math.random() * 0.55;
-                        const branchAngle = 0.55 + Math.random() * 0.28;
-                        const attachX = -0.2 + Math.random() * 1.5;
-                        const attachY = mainRadius * 0.72;
-                        const branch = addLog(
-                            floaterGroup,
-                            branchLength,
-                            0.045 + Math.random() * 0.018,
-                            attachX + Math.cos(branchAngle) * branchLength * 0.43,
-                            attachY + Math.sin(branchAngle) * branchLength * 0.43,
-                            0.015,
-                            0.35
-                        );
-                        branch.rotation.z = -branchAngle;
-                    }
-                    floaterGroup.scale.set(1, 0.9, 0.9);
-                } else if (typeChoice < 0.42) {
-                    // 小さく短い枝
-                    addLog(floaterGroup, 1.5 + Math.random() * 1.0, 0.13 + Math.random() * 0.06, 0, 0, 0, 0.55);
-                    if (Math.random() < 0.65) {
-                        const twig = addLog(floaterGroup, 1.0 + Math.random() * 0.6, 0.065, 0.15, 0.28, 0, 0.35);
-                        twig.rotation.z = Math.PI / 2 - 0.55;
-                    }
-                    floaterGroup.scale.setScalar(0.72 + Math.random() * 0.18);
-                } else if (typeChoice < 0.64) {
-                    // 太くて大きな丸太
-                    addLog(floaterGroup, 3.2 + Math.random() * 1.8, 0.32 + Math.random() * 0.12, 0, 0, 0, 0.78);
-                    addLog(floaterGroup, 1.2, 0.12, -0.35, 0.28, 0.08, 0.5);
-                    floaterGroup.scale.setScalar(1.15 + Math.random() * 0.25);
-                } else if (typeChoice < 0.84) {
-                    // 二股・三股に分かれた枝
-                    addLog(floaterGroup, 3.5 + Math.random() * 1.4, 0.22, -0.1, 0, 0, 0.62);
-                    const branchA = addLog(floaterGroup, 2.0, 0.105, 0.75, 0.48, 0, 0.45);
-                    branchA.rotation.z = Math.PI / 2 - 0.58;
-                    const branchB = addLog(floaterGroup, 1.65, 0.09, -0.55, -0.35, 0.05, 0.4);
-                    branchB.rotation.z = Math.PI / 2 + 0.65;
-                } else {
-                    // これまでの雰囲気に近い、標準的な曲がり枝
-                    const angleY = (0.3 + Math.random() * 0.55) * (Math.random() < 0.5 ? 1 : -1);
-                    const { group, joint } = createBentSegment(
-                        woodMaterial,
-                        0.2 + Math.random() * 0.08,
-                        0.14 + Math.random() * 0.06,
-                        0.07 + Math.random() * 0.04,
-                        2.2 + Math.random() * 1.0,
-                        1.8 + Math.random() * 1.0,
-                        angleY,
-                        (Math.random() - 0.5) * 0.22
-                    );
-                    floaterGroup.add(group);
-                    if (Math.random() < 0.6) {
-                        const twig = addLog(joint, 1.3, 0.07, 0.5, 0.22, 0, 0.35);
-                        twig.rotation.z = Math.PI / 2 - 0.5;
-                    }
-                    floaterGroup.scale.setScalar(0.85 + Math.random() * 0.35);
-                }
-
-                floaterGroup.position.x = (Math.random() - 0.5) * 300;
-                floaterGroup.position.z = (Math.random() - 0.5) * 200 - 20;
-                floaterGroup.position.y = 0;
-                floaterGroup.rotation.y = Math.random() * Math.PI * 2;
-
-                const baseRot = (Math.random() - 0.5) * 0.004;
-                floaterGroup.userData = {
-                    baseSpeedX: -0.015 - Math.random() * 0.015,
-                    baseSpeedZ: 0.02 + Math.random() * 0.02,
-                    vx: 0,
-                    vz: 0,
-                    baseRotSpeed: baseRot,
-                    rotSpeed: baseRot,
-                    phase: Math.random() * Math.PI * 2,
-                    bobHeight: 0.05 + Math.random() * 0.04,
-                    isBottle: false
-                };
-
-                scene.add(floaterGroup);
-                floaters.push(floaterGroup);
-            }
-            const glowMat = new THREE.ShaderMaterial({
-                vertexShader: `
-                    varying vec3 vNormal;
-                    varying vec3 vViewPosition;
-                    void main() {
-                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                        vViewPosition = -mvPosition.xyz;
-                        vNormal = normalize(normalMatrix * normal);
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vNormal;
-                    varying vec3 vViewPosition;
-                    uniform float glowOpacity;
-                    void main() {
-                        vec3 normal = normalize(vNormal);
-                        vec3 viewDir = normalize(vViewPosition);
-                        
-                        float intensity = max(dot(normal, viewDir), 0.0);
-                        intensity = pow(intensity, 2.5);
-                        vec3 color = vec3(1.0, 0.45, 0.05);
-                        gl_FragColor = vec4(color, intensity * 0.3 * glowOpacity);
-                    }
-                `,
-                uniforms: { glowOpacity: { value: 1.0 } },
-                blending: THREE.AdditiveBlending, 
-                transparent: true,
-                depthWrite: false,
-                depthTest: true, 
-                side: THREE.FrontSide
-            });
-            
-            const glowGeo = new THREE.SphereGeometry(3.2, 16, 16);
-
-            // ランタン全体でGeometryとMaterialを共有し、重複生成を避ける
-            const lanternMetalMat = new THREE.MeshStandardMaterial({
-                color: 0x15181a, roughness: 0.7, metalness: 0.3, flatShading: true
-            });
-            const lanternGlassMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff, transparent: true, opacity: 0.15,
-                roughness: 0.02, metalness: 0.9, side: THREE.DoubleSide
-            });
-            const lanternCandleMat = new THREE.MeshBasicMaterial({ color: 0xffb766 });
-            const lanternBaseGeo = new THREE.BoxGeometry(0.6, 0.08, 0.6);
-            const lanternGlassGeo = new THREE.BoxGeometry(0.52, 0.72, 0.52);
-            const lanternPillarGeo = new THREE.BoxGeometry(0.04, 0.7, 0.04);
-            const lanternRoofBaseGeo = new THREE.BoxGeometry(0.66, 0.04, 0.66);
-            const lanternRoofGeo = new THREE.CylinderGeometry(0.08, 0.33, 0.4, 4);
-            lanternRoofGeo.rotateY(Math.PI / 4);
-            const lanternCapGeo = new THREE.BoxGeometry(0.16, 0.08, 0.16);
-            const lanternRingGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
-            const lanternCandleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
-
-            for(let i=0; i<lanternCount; i++) {
-                const lanternGroup = new THREE.Group();
-
-                const baseGeo = lanternBaseGeo;
-                const base = new THREE.Mesh(baseGeo, lanternMetalMat);
-                base.position.y = 0.04;
-                lanternGroup.add(base);
-
-                const glassGeo = lanternGlassGeo;
-                const glassMat = lanternGlassMat;
-                const glass = new THREE.Mesh(glassGeo, glassMat);
-                glass.position.y = 0.43; 
-                lanternGroup.add(glass);
-
-                const pillarGeo = lanternPillarGeo;
-                const positions = [
-                    [-0.28, 0.28], [0.28, 0.28], 
-                    [-0.28, -0.28], [0.28, -0.28]
-                ];
-                positions.forEach(pos => {
-                    const pillar = new THREE.Mesh(pillarGeo, lanternMetalMat);
-                    pillar.position.set(pos[0], 0.43, pos[1]);
-                    lanternGroup.add(pillar);
-                });
-
-                const roofBaseGeo = lanternRoofBaseGeo;
-                const roofBase = new THREE.Mesh(roofBaseGeo, lanternMetalMat);
-                roofBase.position.y = 0.8;
-                lanternGroup.add(roofBase);
-
-                const roofGeo = lanternRoofGeo; 
-                const roof = new THREE.Mesh(roofGeo, lanternMetalMat);
-                roof.position.y = 1.02;
-                lanternGroup.add(roof);
-
-                const capGeo = lanternCapGeo;
-                const cap = new THREE.Mesh(capGeo, lanternMetalMat);
-                cap.position.y = 1.26;
-                lanternGroup.add(cap);
-
-                const ringGeo = lanternRingGeo;
-                const ring = new THREE.Mesh(ringGeo, lanternMetalMat);
-                ring.position.y = 1.45;
-                lanternGroup.add(ring);
-
-                const candleGeo = lanternCandleGeo;
-                const candleMat = lanternCandleMat;
-                const candle = new THREE.Mesh(candleGeo, candleMat);
-                candle.position.y = 0.25;
-                lanternGroup.add(candle);
-
-                const pLight = new THREE.PointLight(0xff7700, 0.5, 12.0);
-                pLight.position.y = 0.4;
-                pLight.name = "pLight";
-                lanternGroup.add(pLight);
-
-                const isNightExtra = i >= lanternCount - 2;
-                const individualGlowMat = isNightExtra ? glowMat.clone() : glowMat;
-                if (isNightExtra) individualGlowMat.uniforms.glowOpacity.value = 0;
-                const glow = new THREE.Mesh(glowGeo, individualGlowMat);
-                glow.position.y = 0.4;
-                glow.name = "glow";
-                glow.frustumCulled = false; 
-                glow.renderOrder = 1;       
-                glow.raycast = function() {}; 
-                lanternGroup.add(glow);
-
-                lanternGroup.scale.set(1.5, 1.5, 1.5);
-                lanternGroup.position.x = (Math.random() - 0.5) * 300;
-                lanternGroup.position.z = (Math.random() - 0.5) * 200 - 20;
-                lanternGroup.position.y = 0;
-                lanternGroup.userData = {
-                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
-                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
-                    vx: 0,
-                    vz: 0,
-                    baseRotSpeed: (Math.random() - 0.5) * 0.01,
-                    rotSpeed: 0,
-                    phase: Math.random() * Math.PI * 2,
-                    bobHeight: 0.03 + Math.random() * 0.02,
-                    isBottle: false,
-                    isLantern: true,
-                    isNightExtra: isNightExtra
-                };
-                scene.add(lanternGroup);
-                floaters.push(lanternGroup);
-            }
-
-            for(let i=0; i<watchCount; i++) {
-                const watchGroup = new THREE.Group();
-                
-                const brassMat = new THREE.MeshStandardMaterial({
-                    color: 0xb5a642, roughness: 0.3, metalness: 0.8
-                });
-                const faceMat = new THREE.MeshStandardMaterial({
-                    color: 0xfffae6, roughness: 0.9, metalness: 0.1
-                });
-                
-                const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
-                const body = new THREE.Mesh(bodyGeo, brassMat);
-                watchGroup.add(body);
-                
-                const faceGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.12, 16);
-                const face = new THREE.Mesh(faceGeo, faceMat);
-                watchGroup.add(face);
-                
-                const handsMat = new THREE.MeshStandardMaterial({
-                    color: 0x1a1a1a, roughness: 0.6, metalness: 0.4
-                });
-                
-                const hourHandGeo = new THREE.BoxGeometry(0.015, 0.005, 0.12);
-                hourHandGeo.translate(0, 0, 0.05); 
-                const hourHand = new THREE.Mesh(hourHandGeo, handsMat);
-                hourHand.position.set(0, 0.065, 0); 
-                hourHand.rotation.y = Math.PI * (Math.random() * 2); 
-                watchGroup.add(hourHand);
-                
-                const minuteHandGeo = new THREE.BoxGeometry(0.01, 0.005, 0.18);
-                minuteHandGeo.translate(0, 0, 0.08);
-                const minuteHand = new THREE.Mesh(minuteHandGeo, handsMat);
-                minuteHand.position.set(0, 0.07, 0); 
-                minuteHand.rotation.y = Math.PI * (Math.random() * 2);
-                watchGroup.add(minuteHand);
-                
-                const pinGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.02, 8);
-                const pin = new THREE.Mesh(pinGeo, brassMat);
-                pin.position.set(0, 0.075, 0);
-                watchGroup.add(pin);
-                
-                const glassGeo = new THREE.SphereGeometry(0.26, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-                const glassMat = new THREE.MeshPhysicalMaterial({
-                    color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.1, metalness: 0.1
-                });
-                const glass = new THREE.Mesh(glassGeo, glassMat);
-                glass.position.y = 0.05;
-                glass.scale.y = 0.3; 
-                watchGroup.add(glass);
-                
-                const crownGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.08, 8);
-                const crown = new THREE.Mesh(crownGeo, brassMat);
-                crown.position.set(0, 0, -0.34);
-                crown.rotation.x = Math.PI / 2;
-                watchGroup.add(crown);
-                
-                const ringGeo = new THREE.TorusGeometry(0.1, 0.02, 8, 16);
-                const ring = new THREE.Mesh(ringGeo, brassMat);
-                ring.position.set(0, 0, -0.46);
-                watchGroup.add(ring);
-
-                watchGroup.scale.set(1.5, 1.5, 1.5);
-                watchGroup.position.x = (Math.random() - 0.5) * 300;
-                watchGroup.position.z = (Math.random() - 0.5) * 200 - 20;
-                watchGroup.position.y = 0;
-                
-                watchGroup.userData = {
-                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
-                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
-                    vx: 0, vz: 0,
-                    baseRotSpeed: (Math.random() - 0.5) * 0.01,
-                    rotSpeed: 0,
-                    phase: Math.random() * Math.PI * 2,
-                    bobHeight: 0.04 + Math.random() * 0.02,
-                    isBottle: false,
-                    isWatch: true
-                };
-                scene.add(watchGroup);
-                floaters.push(watchGroup);
-            }
-
-            for(let i = 0; i < recordCount; i++) {
-                const recordGroup = new THREE.Group();
-                
-                const vinylMat = new THREE.MeshStandardMaterial({
-                    color: 0x050505, roughness: 0.3, metalness: 0.1
-                });
-                const vinylGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.02, 32);
-                const vinyl = new THREE.Mesh(vinylGeo, vinylMat);
-                recordGroup.add(vinyl);
-                
-                for(let r = 0; r < 6; r++) {
-                    const ringGeo = new THREE.TorusGeometry(0.18 + r * 0.045, 0.003, 4, 32);
-                    const ringMat = new THREE.MeshStandardMaterial({
-                        color: 0x1a1a1a, roughness: 0.3, metalness: 0.8
-                    });
-                    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-                    ringMesh.rotation.x = Math.PI / 2;
-                    ringMesh.position.y = 0.011; 
-                    recordGroup.add(ringMesh);
-                }
-
-                const labelColors = [0x8b0000, 0xdaa520, 0x2f4f4f, 0x696969];
-                const labelMat = new THREE.MeshStandardMaterial({
-                    color: labelColors[i % labelColors.length], roughness: 0.9, metalness: 0.0
-                });
-                const labelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.025, 32);
-                const label = new THREE.Mesh(labelGeo, labelMat);
-                recordGroup.add(label);
-                
-                const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-                const holeGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.03, 16);
-                const hole = new THREE.Mesh(holeGeo, holeMat);
-                recordGroup.add(hole);
-
-                recordGroup.scale.set(2.0, 2.0, 2.0);
-                recordGroup.position.x = (Math.random() - 0.5) * 300;
-                recordGroup.position.z = (Math.random() - 0.5) * 200 - 20;
-                recordGroup.position.y = 0;
-                
-                recordGroup.userData = {
-                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
-                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
-                    vx: 0, vz: 0,
-                    baseRotSpeed: (Math.random() - 0.5) * 0.02, 
-                    rotSpeed: 0,
-                    phase: Math.random() * Math.PI * 2,
-                    bobHeight: 0.02 + Math.random() * 0.02,
-                    isBottle: false,
-                    isRecord: true
-                };
-                scene.add(recordGroup);
-                floaters.push(recordGroup);
-            }
-
-            for(let i = 0; i < glassBallCount; i++) {
-                const ballGroup = new THREE.Group();
-                
-                // ガラス玉を見つけやすいように、少し明るく、ほんのり発光（反射）させる
-                const glassMat = new THREE.MeshPhysicalMaterial({
-                    color: 0x88ccff, transmission: 0.9, opacity: 0.9, transparent: true, 
-                    roughness: 0.1, metalness: 0.2, emissive: 0x002255, emissiveIntensity: 0.8
-                });
-                const glassGeo = new THREE.SphereGeometry(0.35, 16, 16);
-                const glassMesh = new THREE.Mesh(glassGeo, glassMat);
-                ballGroup.add(glassMesh);
-                
-                const ropeMat = new THREE.MeshStandardMaterial({
-                    color: 0x8b5a2b, roughness: 1.0, flatShading: true
-                });
-                for(let r=0; r<4; r++) {
-                    const ropeGeo = new THREE.TorusGeometry(0.355, 0.015, 4, 16);
-                    const rope = new THREE.Mesh(ropeGeo, ropeMat);
-                    rope.rotation.y = (Math.PI / 4) * r;
-                    ballGroup.add(rope);
-                }
-                const ropeGeoH = new THREE.TorusGeometry(0.355, 0.015, 4, 16);
-                const ropeH = new THREE.Mesh(ropeGeoH, ropeMat);
-                ropeH.rotation.x = Math.PI / 2;
-                ballGroup.add(ropeH);
-
-                const knot = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8), ropeMat);
-                knot.position.y = 0.35;
-                ballGroup.add(knot);
-
-                // サイズも少しだけ大きくして見つけやすく
-                ballGroup.scale.set(2.2, 2.2, 2.2);
-                ballGroup.position.x = (Math.random() - 0.5) * 300;
-                ballGroup.position.z = (Math.random() - 0.5) * 200 - 20;
-                ballGroup.position.y = 0;
-                
-                ballGroup.userData = {
-                    baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
-                    baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
-                    vx: 0, vz: 0,
-                    baseRotSpeed: (Math.random() - 0.5) * 0.02, 
-                    rotSpeed: 0,
-                    phase: Math.random() * Math.PI * 2,
-                    bobHeight: 0.04 + Math.random() * 0.02,
-                    isBottle: false,
-                    isGlassBall: true
-                };
-                scene.add(ballGroup);
-                floaters.push(ballGroup);
-            }
-
-            // 小さな木製の船：素朴な帆船を少数だけ漂わせる
-            for (let i = 0; i < boatCount; i++) {
-                const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
-                boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
-                boat.rotation.y = Math.random() * Math.PI * 2;
-                boat.userData = {
-                    baseSpeedX: -0.008 - Math.random() * 0.006,
-                    baseSpeedZ: 0.012 + (Math.random() - 0.5) * 0.006,
-                    vx: 0, vz: 0,
-                    baseRotSpeed: (Math.random() - 0.5) * 0.002,
-                    rotSpeed: 0,
-                    phase: Math.random() * Math.PI * 2,
-                    bobHeight: 0.035 + Math.random() * 0.02,
-                    isBottle: false,
-                    isBoat: true
-                };
-                scene.add(boat);
-                floaters.push(boat);
-            }
-
-            // 実際のモデル寸法から衝突半径を求める（種類ごとの拡大率も反映）
-            floaters.forEach(f => {
-                f.updateMatrixWorld(true);
-                const bounds = new THREE.Box3().setFromObject(f);
-                const size = bounds.getSize(new THREE.Vector3());
-                f.userData.collisionRadius = Math.max(size.x, size.z) * 0.42 + 0.35;
-            });
-        }
-
-        function createSunAndMoon() {
-            const sunGeo = new THREE.SphereGeometry(35, 32, 32); 
-            const sunMat = new THREE.MeshBasicMaterial({
-                color: 0xffffee,
-                transparent: true,
-                opacity: 1,
-                fog: false
-            });
-            sunMesh = new THREE.Mesh(sunGeo, sunMat);
-            scene.add(sunMesh);
-
-            const moonGeo = new THREE.SphereGeometry(35, 32, 32);
-            const moonMat = new THREE.MeshBasicMaterial({
-                color: 0xeeffff,
-                transparent: true,
-                opacity: 0,
-                fog: false
-            });
-            moonMesh = new THREE.Mesh(moonGeo, moonMat);
-            scene.add(moonMesh);
-        }
-
-        function createStars() {
-            const starsGeometry = new THREE.BufferGeometry();
-            const starsCount = 10000; 
-            const posArray = new Float32Array(starsCount * 3);
-            const colorArray = new Float32Array(starsCount * 3);
-            const sizeArray = new Float32Array(starsCount);
-            const phaseArray = new Float32Array(starsCount);
-
-            for(let i = 0; i < starsCount; i++) {
-                let x, y, z;
-                do {
-                    x = (Math.random() - 0.5) * 2;
-                    y = (Math.random() - 0.5) * 2;
-                    z = (Math.random() - 0.5) * 2;
-                } while (y < 0.05 || (x*x + y*y + z*z) > 1);
-                
-                const baseDist = 1500 + Math.random() * 1500;
-                const normalize = baseDist / Math.sqrt(x*x + y*y + z*z);
-                
-                posArray[i*3] = x * normalize;
-                posArray[i*3+1] = y * normalize;
-                posArray[i*3+2] = z * normalize;
-                
-                const starType = Math.random();
-                let color = new THREE.Color();
-                if(starType > 0.90) color.setHex(0xb0d5ff); 
-                else if(starType > 0.75) color.setHex(0xffe2be); 
-                else if(starType > 0.50) color.setHex(0xffffff); 
-                else color.setHex(0x88bbff); 
-                
-                const brightness = 0.15 + Math.random() * 0.35;
-                colorArray[i*3] = color.r * brightness;
-                colorArray[i*3+1] = color.g * brightness;
-                colorArray[i*3+2] = color.b * brightness;
-                
-                sizeArray[i] = 1.5 + Math.random() * 3.5;
-                phaseArray[i] = Math.random() * Math.PI * 2;
-            }
-
-            starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            starsGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
-            starsGeometry.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
-            starsGeometry.setAttribute('phase', new THREE.BufferAttribute(phaseArray, 1));
-
-            const starsMaterial = new THREE.ShaderMaterial({
-                uniforms: {
-                    time: { value: 0 },
-                    globalOpacity: { value: 0 },
-                    pixelRatio: { value: renderer.getPixelRatio() }
-                },
-                vertexShader: `
-                    attribute float size;
-                    attribute float phase;
-                    varying vec3 vColor;
-                    varying float vPhase;
-                    uniform float pixelRatio;
-                    
-                    void main() {
-                        vColor = color;
-                        vPhase = phase;
-                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                        gl_PointSize = size * pixelRatio * (800.0 / -mvPosition.z);
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
-                `,
-                fragmentShader: `
-                    uniform float time;
-                    uniform float globalOpacity;
-                    varying vec3 vColor;
-                    varying float vPhase;
-                    
-                    void main() {
-                        float twinkle = (sin(time * 2.5 + vPhase) + 1.0) * 0.5;
-                        float alpha = (0.3 + 0.7 * twinkle) * globalOpacity;
-                        
-                        vec2 coord = gl_PointCoord - vec2(0.5);
-                        if(length(coord) > 0.5) discard;
-                        
-                        float dist = length(coord);
-                        float core = smoothstep(0.5, 0.0, dist);
-                        vec3 finalColor = mix(vColor, vec3(1.0), core * 0.8);
-                        
-                        gl_FragColor = vec4(finalColor, alpha * core * 0.6);
-                    }
-                `,
-                transparent: true,
-                vertexColors: true,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                fog: false
-            });
-
-            stars = new THREE.Points(starsGeometry, starsMaterial);
-            scene.add(stars);
-        }
-
-        function createShootingStar() {
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(6); 
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-            const material = new THREE.LineBasicMaterial({
-                color: 0xddf4ff,
-                transparent: true,
-                opacity: 0,
-                blending: THREE.AdditiveBlending,
-                fog: false
-            });
-
-            shootingStar = new THREE.Line(geometry, material);
-            scene.add(shootingStar);
-        }
-
-        function createParticleTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 32; canvas.height = 32;
-            const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-            grad.addColorStop(0, 'rgba(255, 230, 180, 1)');
-            grad.addColorStop(0.3, 'rgba(255, 150, 50, 0.8)');
-            grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 32, 32);
-            particleTexture = new THREE.CanvasTexture(canvas);
-        }
-
-        function createBioluminescence() {
-            const count = 1000;
-            const geo = new THREE.BufferGeometry();
-            const positions = new Float32Array(count * 3);
-            const phases = new Float32Array(count);
-
-            for (let i = 0; i < count; i++) {
-                positions[i * 3] = (Math.random() - 0.5) * 400; 
-                positions[i * 3 + 1] = 0; 
-                positions[i * 3 + 2] = (Math.random() - 0.5) * 300 - 50; 
-                phases[i] = Math.random() * Math.PI * 2;
-            }
-            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geo.setAttribute('phase', new THREE.BufferAttribute(phases, 1));
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 16;
-            canvas.height = 16;
-            const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-            grad.addColorStop(0, 'rgba(180, 230, 255, 1)');
-            grad.addColorStop(0.4, 'rgba(100, 200, 255, 0.9)');
-            grad.addColorStop(1, 'rgba(0, 80, 150, 0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 16, 16);
-            const tex = new THREE.CanvasTexture(canvas);
-
-            const mat = new THREE.ShaderMaterial({
-                uniforms: {
-                    time: { value: 0 },
-                    globalOpacity: { value: 0 },
-                    map: { value: tex }
-                },
-                vertexShader: `
-                    attribute float phase;
-                    varying float vPhase;
-                    uniform float time;
-                    void main() {
-                        vPhase = phase;
-                        vec3 pos = position;
-                        float driftX = sin(time * 0.3 + phase * 2.0) * 3.0;
-                        float driftZ = cos(time * 0.25 + phase * 1.5) * 3.0;
-                        pos.x += driftX;
-                        pos.z += driftZ;
-                        pos.y = sin(pos.x * 0.15 + time * 1.5 + phase) * 0.15 + cos(pos.z * 0.15 + time * 1.2) * 0.15 - 0.05;
-                        
-                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-                        gl_PointSize = 20.0 * (10.0 / -mvPosition.z);
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
-                `,
-                fragmentShader: `
-                    uniform sampler2D map;
-                    uniform float time;
-                    uniform float globalOpacity;
-                    varying float vPhase;
-                    void main() {
-                        float alpha = (sin(time * 2.5 + vPhase) * 0.4 + 0.6) * globalOpacity * 1.5;
-                        vec4 texColor = texture2D(map, gl_PointCoord);
-                        gl_FragColor = vec4(texColor.rgb, texColor.a * alpha);
-                    }
-                `,
-                blending: THREE.AdditiveBlending,
-                transparent: true,
-                depthWrite: false
-            });
-
-            bioluminescence = new THREE.Points(geo, mat);
-            scene.add(bioluminescence);
-        }
-
-        function createWhale() {
-            whaleGroup = new THREE.Group();
-            
-            const bodyGeo = new THREE.SphereGeometry(15, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-            bodyGeo.scale(1, 0.4, 2.5);
-            const whaleMat = new THREE.MeshStandardMaterial({
-                color: 0x1a2b3c, roughness: 0.8, metalness: 0.1
-            });
-            const body = new THREE.Mesh(bodyGeo, whaleMat);
-            whaleGroup.add(body);
-            
-            const tailGeo = new THREE.ConeGeometry(8, 15, 4);
-            tailGeo.rotateX(Math.PI / 2);
-            tailGeo.scale(1, 0.2, 1);
-            const tail = new THREE.Mesh(tailGeo, whaleMat);
-            tail.position.set(0, -2, 25); 
-            tail.rotation.x = -Math.PI / 6;
-            whaleGroup.add(tail);
-            
-            whaleGroup.visible = false;
-            scene.add(whaleGroup);
-        }
-
-        function createBirds() {
-            birdsGroup = new THREE.Group();
-            const mat = new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.DoubleSide, transparent: true, opacity: 0, fog: true });
-            
-            const wingGeo = new THREE.BufferGeometry();
-            const vertices = new Float32Array([
-                0, 0, -1.5,    // 頭側 (-Z方向が正面)
-                0, 0, 0.5,     // 尻尾側 (+Z)
-                4, 0, 0        // 翼の先端 (+X)
-            ]);
-            wingGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-            wingGeo.computeVertexNormals();
-
-            for (let i = 0; i < 7; i++) {
-                const bird = new THREE.Group();
-                
-                const rightWing = new THREE.Mesh(wingGeo, mat);
-                const leftWing = new THREE.Mesh(wingGeo, mat);
-                leftWing.scale.x = -1;
-                
-                bird.add(rightWing);
-                bird.add(leftWing);
-                
-                bird.userData = {
-                    rightWing: rightWing,
-                    leftWing: leftWing,
-                    phase: Math.random() * Math.PI * 2,
-                    flapSpeed: 10.0 + Math.random() * 5.0,
-                    baseY: (Math.random() - 0.5) * 80,
-                    orbitRadius: 150 + Math.random() * 120,
-                    orbitSpeed: 0.15 + Math.random() * 0.1,
-                    orbitPhase: Math.random() * Math.PI * 2,
-                    mat: mat
-                };
-                
-                birdsGroup.add(bird);
-            }
-            
-            // 西の空高くに配置
-            birdsGroup.position.set(400, 250, 0); 
-            scene.add(birdsGroup);
-        }
-
-        function triggerWhale(now) {
-            isWhaleActive = true;
-            whaleStartTime = now;
-            lastWhaleTime = now;
-            
-            const angle = (Math.random() - 0.5) * Math.PI * 0.8 + Math.PI; 
-            const dist = 700 + Math.random() * 500; 
-            
-            whaleGroup.position.set(Math.sin(angle) * dist, -15, Math.cos(angle) * dist);
-            whaleGroup.rotation.y = angle + Math.PI / 2;
-            whaleGroup.userData.hasSung = false;
-            whaleGroup.visible = true;
-        }
-
-        function updateWhale(now) {
-            if (!whaleGroup) return;
-            
-            if (!isWhaleActive) {
-                if (now - lastWhaleTime > nextWhaleInterval) {
-                    triggerWhale(now);
-                    nextWhaleInterval = 45000 + Math.random() * 30000; 
-                }
-                return;
-            }
-            
-            const elapsed = (now - whaleStartTime) * 0.001;
-            const t = elapsed / WHALE_DURATION;
-            
-            if (t >= 1.0) {
-                isWhaleActive = false;
-                whaleGroup.visible = false;
-                return;
-            }
-            
-            const height = Math.sin(t * Math.PI) * 16 - 15;
-            whaleGroup.position.y = height;
-            whaleGroup.translateZ(-0.6); 
-            whaleGroup.rotation.x = Math.cos(t * Math.PI) * 0.2; 
-            
-            if (elapsed >= 4.0 && elapsed < 4.1 && !whaleGroup.userData.hasSung) {
-                playWhaleSound();
-                spawnWhaleSpout(whaleGroup.position);
-                whaleGroup.userData.hasSung = true;
-            }
-        }
-
-        function spawnWhaleSpout(originPos) {
-            const count = 40;
-            for (let i = 0; i < count; i++) {
-                const mat = new THREE.MeshBasicMaterial({
-                    color: 0xffffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending
-                });
-                const mesh = new THREE.Mesh(particleGeo, mat);
-                
-                mesh.position.copy(originPos);
-                mesh.position.z -= 15; 
-                mesh.position.y += 2;
-                
-                const vx = (Math.random() - 0.5) * 0.6;
-                const vy = 1.5 + Math.random() * 2.0; 
-                const vz = (Math.random() - 0.5) * 0.6;
-                
-                scene.add(mesh);
-                whaleParticles.push({
-                    mesh: mesh, vx: vx, vy: vy, vz: vz,
-                    life: 1.0, decay: 0.015 + Math.random() * 0.01 
-                });
-            }
-        }
-
-        function spawnRipple(originPos) {
-            const mat = new THREE.ShaderMaterial({
-                uniforms: {
-                    progress: { value: 0.0 },
-                    color: { value: new THREE.Color(0xffffff) } 
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform float progress;
-                    uniform vec3 color;
-                    varying vec2 vUv;
-                    void main() {
-                        vec2 uv = vUv - 0.5;
-                        float dist = length(uv) * 2.0; 
-                        
-                        float ring = 1.0 - smoothstep(0.0, 0.08, abs(dist - progress));
-                        float alpha = ring * pow(1.0 - progress, 1.5) * smoothstep(1.0, 0.8, dist);
-                        
-                        gl_FragColor = vec4(color, alpha * 0.5);
-                    }
-                `,
-                transparent: true,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                side: THREE.DoubleSide
-            });
-
-            const geo = new THREE.PlaneGeometry(18, 18); 
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.rotation.x = -Math.PI / 2; 
-            mesh.position.copy(originPos);
-            mesh.position.y = 0.02; 
-            scene.add(mesh);
-
-            ripples.push({
-                mesh: mesh,
-                life: 0.0,
-                speed: 0.003 + Math.random() * 0.002 
-            });
-        }
-
-        function spawnLanternParticles(originPos) {
-            const count = 5 + Math.floor(Math.random() * 4); 
-            for (let i = 0; i < count; i++) {
-                const mat = new THREE.ShaderMaterial({
-                    uniforms: { opacity: { value: 1.0 } },
-                    vertexShader: `
-                        varying vec3 vNormal;
-                        varying vec3 vViewPosition;
-                        void main() {
-                            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                            vViewPosition = -mvPosition.xyz;
-                            vNormal = normalize(normalMatrix * normal);
-                            gl_Position = projectionMatrix * mvPosition;
-                        }
-                    `,
-                    fragmentShader: `
-                        uniform float opacity;
-                        varying vec3 vNormal;
-                        varying vec3 vViewPosition;
-                        void main() {
-                            vec3 normal = normalize(vNormal);
-                            vec3 viewDir = normalize(vViewPosition);
-                            float intensity = max(dot(normal, viewDir), 0.0);
-                            intensity = pow(intensity, 2.5);
-                            vec3 color = vec3(1.0, 0.45, 0.05);
-                            gl_FragColor = vec4(color, intensity * opacity);
-                        }
-                    `,
-                    blending: THREE.NormalBlending,
-                    transparent: true,
-                    depthWrite: false,
-                    side: THREE.FrontSide
-                });
-                
-                const mesh = new THREE.Mesh(particleGeo, mat);
-                mesh.position.copy(originPos);
-                mesh.position.x += (Math.random() - 0.5) * 1.2;
-                mesh.position.y += 0.8 + Math.random() * 0.5;
-                mesh.position.z += (Math.random() - 0.5) * 1.2;
-                
-                const vx = (Math.random() - 0.5) * 0.015;
-                const vy = 0.015 + Math.random() * 0.015; 
-                const vz = (Math.random() - 0.5) * 0.015;
-                
-                scene.add(mesh);
-                particles.push({
-                    mesh: mesh, vx: vx, vy: vy, vz: vz,
-                    life: 1.0, decay: 0.008 + Math.random() * 0.01, 
-                    phase: Math.random() * Math.PI * 2 
-                });
-            }
-        }
-
-        function triggerShootingStar(now) {
-            isShootingStarActive = true;
-            shootingStarStartTime = now;
-            lastShootingStarTime = now;
-
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 1000 + Math.random() * 800;
-            const height = 500 + Math.random() * 700;
-
-            shootingStarStartPos.set(
-                Math.cos(angle) * radius,
-                height,
-                Math.sin(angle) * radius - 300
-            );
-
-            const dirAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
-            const length = 500 + Math.random() * 400;
-            shootingStarDir.set(
-                Math.cos(dirAngle) * length,
-                -200 - Math.random() * 250,
-                Math.sin(dirAngle) * length
-            );
-        }
-
-        function updateShootingStar(now) {
-            if (!shootingStar) return;
-
-            if (!isShootingStarActive) {
-                const isDarkEnough = stars && stars.material.uniforms.globalOpacity.value > 0.2;
-                if (isDarkEnough && (now - lastShootingStarTime > nextShootingStarInterval)) {
-                    triggerShootingStar(now);
-                    if (Math.random() < 0.25) {
-                        nextShootingStarInterval = 800 + Math.random() * 2000; 
-                    } else {
-                        nextShootingStarInterval = 8000 + Math.random() * 30000;
-                    }
-                }
-                return;
-            }
-
-            const elapsed = (now - shootingStarStartTime) * 0.001;
-            const t = elapsed / SHOOTING_STAR_DURATION;
-
-            if (t >= 1.0) {
-                isShootingStarActive = false;
-                shootingStar.material.opacity = 0;
-                return;
-            }
-
-            const headT = t;
-            const tailT = Math.max(0, t - 0.28);
-
-            const headPos = shootingStarStartPos.clone().addScaledVector(shootingStarDir, headT);
-            const tailPos = shootingStarStartPos.clone().addScaledVector(shootingStarDir, tailT);
-
-            const positions = shootingStar.geometry.attributes.position.array;
-            positions[0] = headPos.x;
-            positions[1] = headPos.y;
-            positions[2] = headPos.z;
-            positions[3] = tailPos.x;
-            positions[4] = tailPos.y;
-            positions[5] = tailPos.z;
-
-            shootingStar.geometry.attributes.position.needsUpdate = true;
-
-            let opacity = 1.0;
-            if (t < 0.15) {
-                opacity = t / 0.15;
-            } else if (t > 0.65) {
-                opacity = (1.0 - t) / 0.35;
-            }
-            
-            shootingStar.material.opacity = opacity;
-        }
-
-        function updateTimeOfDay(progress) {
-            currentProgress = progress;
-            
-            const hourAngle = (progress - 0.5) * Math.PI * 2;
-            const distance = 4000;
-            
-            const latitude = 35.0; 
-            const maxAltitude = (90 - latitude) * Math.PI / 180; 
-
-            sun.x = Math.sin(hourAngle) * distance; 
-            sun.y = Math.cos(hourAngle) * Math.sin(maxAltitude) * distance; 
-            sun.z = -Math.cos(hourAngle) * Math.cos(maxAltitude) * distance; 
-            
-            moon.x = Math.sin(hourAngle + Math.PI) * distance;
-            moon.y = Math.cos(hourAngle + Math.PI) * Math.sin(maxAltitude) * distance;
-            moon.z = -Math.cos(hourAngle + Math.PI) * Math.cos(maxAltitude) * distance;
-
-            if (sunMesh) sunMesh.position.copy(sun).multiplyScalar(0.25);
-            if (moonMesh) moonMesh.position.copy(moon).multiplyScalar(0.25);
-
-            const elevationRatio = Math.cos(hourAngle);
-            const sunElevation = elevationRatio * 90; 
-            
-            let dayRatio = THREE.MathUtils.clamp((sunElevation + 15) / 30, 0, 1);
-            let nightRatio = 1.0 - dayRatio;
-            currentNightRatio = nightRatio;
-            
-            let sunsetRaw = THREE.MathUtils.clamp(1.0 - Math.abs(sunElevation - 5) / 35.0, 0, 1);
-            let sunsetRatio = Math.pow(sunsetRaw, 1.5);
-            
-            // 夕暮れ時に海鳥をフェードイン
-            let isEvening = progress > 0.5 && progress < 0.85;
-            if (isEvening && sunsetRatio > 0.05) {
-                targetBirdOpacity = Math.min(sunsetRatio * 1.5, 0.85);
-            } else {
-                targetBirdOpacity = 0;
-            }
-
-            const skyUniforms = sky.material.uniforms;
-            if (skyUniforms['sunPosition']) skyUniforms['sunPosition'].value.copy(sun);
-            
-            let sunMeshColor = new THREE.Color(4.0, 4.0, 4.0).lerp(new THREE.Color(1.0, 0.35, 0.0), sunsetRatio);
-            sunMesh.material.color.copy(sunMeshColor);
-            let sunOpacity = THREE.MathUtils.clamp((sunElevation + 5) / 10, 0, 1);
-            sunOpacity *= (1.0 - Math.pow(sunsetRatio, 0.6)); 
-            sunMesh.material.opacity = sunOpacity;
-            
-            if (bioluminescence) bioluminescence.material.uniforms.globalOpacity.value = nightRatio * 0.8;
-            if (stars) stars.material.uniforms.globalOpacity.value = nightRatio;
-            if (moonMesh) moonMesh.material.opacity = nightRatio;
-
-            if (sunElevation > -10) {
-                directionalLight.position.copy(sun);
-                let dirColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff4400), sunsetRatio);
-                directionalLight.color.copy(dirColor);
-                
-                let lightInt = Math.max(0, (sunElevation + 10) / 20) * (2.0 - sunsetRatio * 1.5); 
-                directionalLight.intensity = lightInt;
-            } else {
-                directionalLight.position.copy(moon);
-                directionalLight.color.copy(MOONLIGHT_COLOR);
-                directionalLight.intensity = nightRatio * 0.95; 
-            }
-            
-            if (sunElevation > -2) {
-                water.material.uniforms['sunDirection'].value.copy(sun).normalize();
-                let intenseSunColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff3300), sunsetRatio);
-                water.material.uniforms['sunColor'].value.copy(intenseSunColor);
-            } else {
-                water.material.uniforms['sunDirection'].value.set(0, 1, 0).normalize(); 
-                let starlightColor = new THREE.Color(0x77aaff).multiplyScalar(nightRatio * 0.35); 
-                water.material.uniforms['sunColor'].value.copy(starlightColor);
-            }
-
-            const ambientDay = new THREE.Color(0x77aaff); 
-            const ambientNight = new THREE.Color(0x283a4e); 
-            const ambientSunset = new THREE.Color(0x442211); 
-            
-            let clearAmbient = new THREE.Color().lerpColors(ambientNight, ambientDay, dayRatio).lerp(ambientSunset, sunsetRatio);
-            ambientLight.color.copy(clearAmbient);
-            
-            let baseAmbientInt = 0.35 + (dayRatio * 0.25) - (sunsetRatio * 0.3);
-            ambientLight.intensity = baseAmbientInt;
-
-            let clearWater = new THREE.Color().lerpColors(WATER_BASE_NIGHT, WATER_BASE_DAY, dayRatio).lerp(WATER_BASE_SUNSET, sunsetRatio);
-            water.material.uniforms['waterColor'].value.copy(clearWater);
-
-            let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25); 
-            renderer.toneMappingExposure = baseExp;
-
-            if (scene.environment) scene.environment.dispose();
-            scene.environment = pmremGenerator.fromScene(sky).texture;
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            render();
-        }
-
-        function render() {
-            const time = performance.now() * 0.001;
-            const nowMs = performance.now();
-
-            water.material.uniforms['time'].value += 0.2 / 60.0; 
-            
-            if (bioluminescence) {
-                bioluminescence.material.uniforms['time'].value = time;
-            }
-
-            if (stars) {
-                stars.material.uniforms['time'].value = time;
-                stars.rotation.y = time * 0.004;
-            }
-
-            for (let i = ripples.length - 1; i >= 0; i--) {
-                let r = ripples[i];
-                r.life += r.speed;
-                if (r.life >= 1.0) {
-                    scene.remove(r.mesh);
-                    if (r.mesh.material) r.mesh.material.dispose();
-                    if (r.mesh.geometry) r.mesh.geometry.dispose();
-                    ripples.splice(i, 1);
-                } else {
-                    r.mesh.material.uniforms.progress.value = r.life;
-                }
-            }
-
-            // 海鳥の更新
-            currentBirdOpacity += (targetBirdOpacity - currentBirdOpacity) * 0.02;
-            if (birdsGroup) {
-                if (currentBirdOpacity > 0.01) {
-                    birdsGroup.visible = true;
-                    birdsGroup.children[0].userData.mat.opacity = currentBirdOpacity;
-                    
-                    const nextWorldPos = new THREE.Vector3();
-                    
-                    birdsGroup.children.forEach(bird => {
-                        const ud = bird.userData;
-                        ud.orbitPhase -= ud.orbitSpeed * 0.01; 
-                        
-                        bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
-                        bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
-                        bird.position.y = ud.baseY + Math.sin(time * 0.5 + ud.phase) * 15;
-                        
-                        // 進行方向を向く
-                        const nextX = Math.cos(ud.orbitPhase - 0.1) * ud.orbitRadius;
-                        const nextZ = Math.sin(ud.orbitPhase - 0.1) * ud.orbitRadius;
-                        nextWorldPos.set(nextX, bird.position.y, nextZ);
-                        birdsGroup.localToWorld(nextWorldPos);
-                        bird.lookAt(nextWorldPos);
-                        
-                        // 羽ばたき (時々滑空)
-                        const flapAmount = Math.sin(time * ud.flapSpeed + ud.phase);
-                        const glide = Math.sin(time * 0.4 + ud.phase) > 0.3 ? 0.1 : 1.0; 
-                        const angle = flapAmount * 0.5 * glide + 0.2;
-                        
-                        ud.rightWing.rotation.z = angle;
-                        ud.leftWing.rotation.z = -angle;
-                        
-                        // 滑空時は少し体を傾ける
-                        bird.rotation.z = Math.sin(time * 0.2 + ud.phase) * 0.3 * (1.0 - glide);
-                    });
-                } else {
-                    birdsGroup.visible = false;
-                }
-            }
-
-            if (rock) {
-                 rock.position.y = 1.3 + Math.sin(time * 0.5) * 0.04;
-                 rock.rotation.y = 0.75 + Math.sin(time * 0.1) * 0.01;
-                 const waterShadow = rock.userData.waterShadow;
-                 if (waterShadow) {
-                     waterShadow.position.x = rock.position.x + 1.5 + sun.x * 0.0015;
-                     waterShadow.position.z = rock.position.z + 1.5 + sun.z * 0.0015;
-                     waterShadow.material.opacity = 0.34 + Math.max(0, directionalLight.intensity) * 0.22;
-                     waterShadow.rotation.z = Math.atan2(sun.z, sun.x);
-                 }
-            }
-
-            const rockX = rock ? rock.position.x : 0;
-            const rockZ = rock ? rock.position.z : 0;
-            const avoidRadius = 12.0; 
-
-            floaters.forEach(f => {
-                let forceX = 0, forceZ = 0;
-                
-                if (!f.userData.isBottle || !f.userData.isSinking) {
-                    if (rock) {
-                        const dx = f.position.x - rockX;
-                        const dz = f.position.z - rockZ;
+                    const a = floaters[i];
+                    if (a.userData.isBottle && a.userData.isSinking) continue;
+                    for (let j = i + 1; j < floaters.length; j++) {
+                        const b = floaters[j];
+                        if (b.userData.isBottle && b.userData.isSinking) continue;
+                        const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
+                        const minDist = (a.userData.collisionRadius || 1.5) + (b.userData.collisionRadius || 1.5);
                         const distSq = dx * dx + dz * dz;
-
-                        if (distSq < avoidRadius * avoidRadius && distSq > 0.001) {
-                            const dist = Math.sqrt(distSq);
-                            const pushFactor = Math.pow(1.0 - (dist / avoidRadius), 2.0) * 0.15;
-                            forceX = (dx / dist) * pushFactor;
-                            forceZ = (dz / dist) * pushFactor;
-                            f.userData.rotSpeed += (Math.random() - 0.5) * 0.001;
+                        if (distSq >= minDist * minDist) continue;
+                        const dist = Math.sqrt(Math.max(distSq, 0.0001));
+                        const nx = distSq < 0.0001 ? (Math.random() < 0.5 ? 1 : -1) : dx / dist;
+                        const nz = distSq < 0.0001 ? 0 : dz / dist;
+                        const push = (minDist - dist) * 0.52;
+                        a.position.x -= nx * push; a.position.z -= nz * push;
+                        b.position.x += nx * push; b.position.z += nz * push;
+                        if (pass === 0) {
+                            const relativeSpeed = (b.userData.vx - a.userData.vx) * nx + (b.userData.vz - a.userData.vz) * nz;
+                            if (relativeSpeed < 0) {
+                                const impulse = -relativeSpeed * 0.32;
+                                a.userData.vx -= nx * impulse * 0.5; a.userData.vz -= nz * impulse * 0.5;
+                                b.userData.vx += nx * impulse * 0.5; b.userData.vz += nz * impulse * 0.5;
+                            }
                         }
-                    }
-
-                    f.userData.rotSpeed += (f.userData.baseRotSpeed - f.userData.rotSpeed) * 0.05;
-
-                    f.userData.vx += (f.userData.baseSpeedX + forceX - f.userData.vx) * 0.06;
-                    f.userData.vz += (f.userData.baseSpeedZ + forceZ - f.userData.vz) * 0.06;
-                    f.position.x += f.userData.vx;
-                    f.position.z += f.userData.vz;
-                    
-                    if (f.position.x < -150) { 
-                        f.userData.encounterId = null;
-                        f.position.x = 150; 
-                        f.position.z = (Math.random() - 0.5) * 200 - 20; 
-                        f.userData.vx = f.userData.baseSpeedX;
-                        f.userData.vz = f.userData.baseSpeedZ;
-                        f.userData.rotSpeed = f.userData.baseRotSpeed;
-                    }
-                    if (f.position.z > 80) { 
-                        f.userData.encounterId = null;
-                        f.position.z = -120; 
-                        f.position.x = (Math.random() - 0.5) * 300; 
-                        f.userData.vx = f.userData.baseSpeedX;
-                        f.userData.vz = f.userData.baseSpeedZ;
-                        f.userData.rotSpeed = f.userData.baseRotSpeed;
-                    }
-                }
-
-                if (f.userData.isBottle) {
-                    if (f.userData.isSinking) {
-                        f.position.y -= 0.015; 
-                        f.rotation.x += 0.01;  
-                        f.rotation.z += 0.01;
-                        
-                        if (f.position.y < -5.0) {
-                            f.userData.isSinking = false;
-                            
-                            f.position.x = (Math.random() - 0.5) * 300;
-                            f.position.z = (Math.random() - 0.5) * 200 - 20;
-                            f.position.y = -0.05;
-                            
-                            f.rotation.set(0, 0, 0);
-                            f.userData.vx = f.userData.baseSpeedX;
-                            f.userData.vz = f.userData.baseSpeedZ;
-                            
-                            f.userData.message = PRESET_MESSAGES[Math.floor(Math.random() * PRESET_MESSAGES.length)];
-                            f.userData.encounterId = null;
-
-                            const cork = f.getObjectByName("cork");
-                            const letter = f.getObjectByName("letter");
-                            const string = f.getObjectByName("string");
-                            if (cork) cork.visible = true;
-                            if (letter) letter.visible = true;
-                            if (string) string.visible = true;
-                        }
-                    } else {
-                        f.position.y = -0.05 + Math.sin(time * 1.6 + f.userData.phase) * f.userData.bobHeight;
-                        f.rotation.x = Math.sin(time * 1.4 + f.userData.phase) * 0.12;
-                        f.rotation.z = Math.cos(time * 1.8 + f.userData.phase) * 0.08;
-                        f.rotation.y += f.userData.rotSpeed;
-                    }
-                } else if (f.userData.isLantern) {
-                    let glowScale = 1.0;
-                    const nightLightFactor = f.userData.isNightExtra
-                        ? THREE.MathUtils.smoothstep(currentNightRatio, 0.25, 0.75)
-                        : 1.0;
-                    let lightIntensity = 0.5 * nightLightFactor;
-                    
-                    if (f.userData.isGlowing) {
-                        const elapsed = nowMs - f.userData.glowStartTime;
-                        const duration = 4000; 
-                        
-                        if (elapsed < duration) {
-                            const intensityPhase = Math.sin((elapsed / duration) * Math.PI);
-                            glowScale = 1.0 + intensityPhase * 1.5; 
-                            lightIntensity = 0.5 + intensityPhase * 3.0; 
-                        } else {
-                            f.userData.isGlowing = false;
-                        }
-                    }
-                    
-                    const pLight = f.getObjectByName("pLight");
-                    const glow = f.getObjectByName("glow");
-                    if (pLight) pLight.intensity = lightIntensity;
-                    if (glow) {
-                        glow.scale.set(glowScale, glowScale, glowScale);
-                        if (f.userData.isNightExtra && glow.material.uniforms && glow.material.uniforms.glowOpacity) {
-                            glow.material.uniforms.glowOpacity.value = nightLightFactor;
-                        }
-                    }
-
-                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight;
-                    f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
-                    f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
-                    f.rotation.y += f.userData.rotSpeed;
-                } else if (f.userData.isBoat) {
-                    f.position.y = Math.sin(time * 1.5 + f.userData.phase) * f.userData.bobHeight;
-                    f.rotation.x = Math.sin(time * 1.1 + f.userData.phase) * 0.055;
-                    f.rotation.z = Math.cos(time * 1.3 + f.userData.phase) * 0.045;
-                    f.rotation.y += f.userData.rotSpeed;
-                } else {
-                    let pushOffset = 0;
-                    if (f.userData.isPushed) {
-                        const elapsed = nowMs - f.userData.pushStartTime;
-                        if (elapsed < 800) {
-                            pushOffset = -Math.sin((elapsed / 800) * Math.PI) * 0.25;
-                        } else {
-                            f.userData.isPushed = false;
-                        }
-                    }
-
-                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
-                    f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
-                    f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
-                    f.rotation.y += f.userData.rotSpeed;
-                }
-            });
-
-            // 漂流物同士の重なりを防ぐ。衝突時は押し分け、進行方向も少しだけ補正する
-            for (let i = 0; i < floaters.length; i++) {
-                const a = floaters[i];
-                if (a.userData.isBottle && a.userData.isSinking) continue;
-                for (let j = i + 1; j < floaters.length; j++) {
-                    const b = floaters[j];
-                    if (b.userData.isBottle && b.userData.isSinking) continue;
-                    const dx = b.position.x - a.position.x;
-                    const dz = b.position.z - a.position.z;
-                    const minDist = (a.userData.collisionRadius || 1.5) + (b.userData.collisionRadius || 1.5);
-                    const distSq = dx * dx + dz * dz;
-                    if (distSq >= minDist * minDist) continue;
-                    const dist = Math.sqrt(Math.max(distSq, 0.0001));
-                    const nx = distSq < 0.0001 ? (Math.random() < 0.5 ? 1 : -1) : dx / dist;
-                    const nz = distSq < 0.0001 ? 0 : dz / dist;
-                    const overlap = minDist - dist;
-                    const push = Math.min(overlap * 0.52, 0.45);
-                    a.position.x -= nx * push;
-                    a.position.z -= nz * push;
-                    b.position.x += nx * push;
-                    b.position.z += nz * push;
-                    const relativeSpeed = (b.userData.vx - a.userData.vx) * nx + (b.userData.vz - a.userData.vz) * nz;
-                    if (relativeSpeed < 0) {
-                        const impulse = -relativeSpeed * 0.32;
-                        a.userData.vx -= nx * impulse * 0.5;
-                        a.userData.vz -= nz * impulse * 0.5;
-                        b.userData.vx += nx * impulse * 0.5;
-                        b.userData.vz += nz * impulse * 0.5;
                     }
                 }
             }
@@ -3886,15 +2514,15 @@
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
-                p.life -= p.decay;
+                p.life -= p.decay * frameScale;
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
                     p.mesh.material.dispose();
                     particles.splice(i, 1);
                 } else {
-                    p.mesh.position.x += p.vx + Math.sin(time * 2.0 + p.phase) * 0.006;
-                    p.mesh.position.y += p.vy;
-                    p.mesh.position.z += p.vz + Math.cos(time * 1.5 + p.phase) * 0.006;
+                    p.mesh.position.x += (p.vx + Math.sin(time * 2.0 + p.phase) * 0.006) * frameScale;
+                    p.mesh.position.y += p.vy * frameScale;
+                    p.mesh.position.z += (p.vz + Math.cos(time * 1.5 + p.phase) * 0.006) * frameScale;
                     
                     if (p.mesh.material.uniforms) {
                         p.mesh.material.uniforms.opacity.value = p.life;
@@ -3909,15 +2537,15 @@
             for (let i = whaleParticles.length - 1; i >= 0; i--) {
                 let p = whaleParticles[i];
                 p.life -= p.decay;
-                p.vy -= 0.03; 
+                p.vy -= 0.03 * frameScale; 
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
                     p.mesh.material.dispose();
                     whaleParticles.splice(i, 1);
                 } else {
-                    p.mesh.position.x += p.vx;
-                    p.mesh.position.y += p.vy;
-                    p.mesh.position.z += p.vz;
+                    p.mesh.position.x += p.vx * frameScale;
+                    p.mesh.position.y += p.vy * frameScale;
+                    p.mesh.position.z += p.vz * frameScale;
                     p.mesh.material.opacity = p.life * 0.6;
                     const scale = p.life * 2.5;
                     p.mesh.scale.set(scale, scale, scale);
