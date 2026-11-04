@@ -121,14 +121,14 @@ let scene, camera, renderer, water, sky;
 
                     setTimeout(() => {
                         startScreen.style.opacity = '0';
-                    }, 500);
+                    }, DrifanConfig.timing.startFadeDelay);
 
                     initAudio(); 
                     resetUITimer();
                     
                     setTimeout(() => {
                         startScreen.style.display = 'none';
-                    }, 2000);
+                    }, DrifanConfig.timing.startHideDelay);
                 });
             }
         };
@@ -279,7 +279,7 @@ let scene, camera, renderer, water, sky;
             scene.add(directionalLight);
 
             createRock();
-            createFloaters(12, 80, 12, 4, 4, 6, 5);
+            createFloaters(DrifanConfig.population.bottles, DrifanConfig.population.driftwood, DrifanConfig.population.lanterns, DrifanConfig.population.watches, DrifanConfig.population.records, DrifanConfig.population.glassFloats, DrifanConfig.population.boats);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; 
