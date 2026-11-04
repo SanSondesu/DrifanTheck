@@ -93,6 +93,10 @@ let scene, camera, renderer, water, sky;
 
         window.onload = function () {
             try {
+                if (window.DrifanDiagnostics) {
+                    const diagnostic = DrifanDiagnostics.run({ storage: true });
+                    if (!diagnostic.passed) console.warn('DrifanTheck startup diagnostics:', diagnostic);
+                }
                 restoreSavedProgress();
                 const initialized = init();
                 if (initialized === false) return;
