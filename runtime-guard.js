@@ -8,6 +8,6 @@
   (document.body||document.documentElement).appendChild(panel);
  }
  global.DrifanRuntime=Object.freeze({show});
- global.addEventListener('error',e=>{const t=e&&e.target;if(t&&t!==global&&(t.tagName==='SCRIPT'||t.tagName==='LINK'))show('必要なファイルを読み込めませんでした。通信状態を確認して、ページを再読み込みしてください。');},true);
+ global.addEventListener('error',e=>{const t=e&&e.target;if(t&&t!==global&&(t.tagName==='SCRIPT'||t.tagName==='LINK'))show('必要なファイルを読み込めませんでした。通信状態を確認して、ページを再読み込みしてください。');else if(e&&e.error)show('アプリの初期化中に問題が発生しました。ページを再読み込みしてお試しください。');},true);
  global.addEventListener('unhandledrejection',e=>console.warn('DrifanTheck: async error.',e.reason));
 })(window);
