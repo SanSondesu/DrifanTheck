@@ -145,7 +145,7 @@ let scene, camera, renderer, water, sky;
             Object.keys(saved.discoveries).forEach(name => {
                 const count = Number(saved.discoveries[name] && saved.discoveries[name].count);
                 if (Number.isFinite(count) && count > 0) {
-                    floaterDiscovery[name] = { count: Math.floor(count) };
+                    floaterDiscovery[name] = { count: Math.floor(count), firstAt: saved.discoveries[name].firstAt || null, lastAt: saved.discoveries[name].lastAt || null };
                     touchedItemsSet.add(name);
                 }
             });
