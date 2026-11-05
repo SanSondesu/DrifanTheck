@@ -13,12 +13,16 @@
         function recordFloaterDiscovery(group) {
             const itemName = getFloaterItemName(group);
             if (!group.userData.encounterId) group.userData.encounterId = ++floaterEncounterSerial;
+            const discoveredAt = new Date().toISOString();
             const key = itemName + ":" + group.userData.encounterId;
             if (discoveredFloaterInstances.has(key)) return false;
             discoveredFloaterInstances.add(key);
             touchedItemsSet.add(itemName);
-            if (!floaterDiscovery[itemName]) floaterDiscovery[itemName] = { count: 0 };
+            if (!floaterDiscovery[itemName]) floaterDiscovery[itemName] = { count: 0, firstAt: discoveredAt, lastAt: discoveredAt };
             floaterDiscovery[itemName].count += 1;
+            floaterDiscovery[itemName].lastAt = discoveredAt;
+            if (!floaterDiscovery[itemName].firstAt) floaterDiscovery[itemName].firstAt = discoveredAt;
+            if (window.DrifanEnhancements) DrifanEnhancements.recordObservation('discovery', itemName);
             saveProgress();
             updateNotebookUI(itemName);
             return true;
