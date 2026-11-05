@@ -3,6 +3,7 @@ function run(options){
  options=options||{};
  const checks={
   config:!!g.DrifanConfig,
+  enhancements:!!g.DrifanEnhancements,
   storage:!!g.DrifanStorage,
   resources:!!g.DrifanResources,
   objects:!!g.DrifanObjects,
