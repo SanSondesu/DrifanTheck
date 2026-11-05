@@ -621,6 +621,7 @@
 
             if (scene.environment) scene.environment.dispose();
             scene.environment = pmremGenerator.fromScene(sky).texture;
+            if (window.DrifanEnhancements) DrifanEnhancements.updateTime(progress, dayRatio, sunsetRatio, nightRatio);
         }
 
         function onWindowResize() {
@@ -642,6 +643,7 @@
             const frameScale = deltaSeconds * 60;
             const time = now * 0.001;
             const nowMs = now;
+            if (window.DrifanEnhancements) DrifanEnhancements.updateFrame(nowMs, currentNightRatio);
 
             water.material.uniforms['time'].value += 0.2 * deltaSeconds; 
             
