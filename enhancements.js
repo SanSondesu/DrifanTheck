@@ -56,7 +56,7 @@ function init(){
 }
 function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
  if(!water||!scene)return;
- const dawn=smooth(.72,.96,progress)*(1-smooth(.12,.28,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
+ const dawn=smooth(.16,.24,progress)*(1-smooth(.30,.38,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
  const sunColor=water.material.uniforms&&water.material.uniforms.sunColor;
  if(sunColor&&sunColor.value&&sunColor.value.isColor)sunColor.value.lerp(new THREE.Color(0xffbd91),twilight*.10);
  if(water.material.uniforms&&water.material.uniforms.distortionScale)water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
