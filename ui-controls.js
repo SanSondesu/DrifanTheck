@@ -175,26 +175,51 @@
         }
         
         let isDraggingSlider = false;
+        let sliderLastPointerAngle = 0;
+        let sliderDragStartMinutes = 0;
+        let sliderAccumulatedAngle = 0;
+
+        function getSliderPointerAngle(e) {
+            const circularSlider = document.getElementById('circular-slider');
+            if (!circularSlider) return null;
+            const rect = circularSlider.getBoundingClientRect();
+            return Math.atan2(
+                e.clientY - (rect.top + rect.height / 2),
+                e.clientX - (rect.left + rect.width / 2)
+            );
+        }
 
         function initCircularSlider() {
             const circularSlider = document.getElementById('circular-slider');
             if (!circularSlider) return;
 
             circularSlider.addEventListener('pointerdown', (e) => {
+                const pointerAngle = getSliderPointerAngle(e);
+                if (pointerAngle === null) return;
+
                 isDraggingSlider = true;
-                updateSliderFromEvent(e);
+                sliderLastPointerAngle = pointerAngle;
+                sliderDragStartMinutes = ((currentProgress % 1) + 1) % 1 * 1440;
+                sliderAccumulatedAngle = 0;
+                if (circularSlider.setPointerCapture && e.pointerId !== undefined) {
+                    try { circularSlider.setPointerCapture(e.pointerId); } catch (_) {}
+                }
                 e.stopPropagation();
                 initAudio();
                 resetUITimer();
             });
-            
+
             window.addEventListener('pointermove', (e) => {
                 if (!isDraggingSlider) return;
                 updateSliderFromEvent(e);
                 resetUITimer();
             });
-            
+
             window.addEventListener('pointerup', () => {
+                if (isDraggingSlider) saveProgress();
+                isDraggingSlider = false;
+            });
+            window.addEventListener('pointercancel', () => {
                 if (isDraggingSlider) saveProgress();
                 isDraggingSlider = false;
             });
@@ -208,20 +233,23 @@
         }
 
         function updateSliderFromEvent(e) {
-            const circularSlider = document.getElementById('circular-slider');
-            if (!circularSlider) return;
-            const rect = circularSlider.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
-            const angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+            const angle = getSliderPointerAngle(e);
+            if (angle === null) return;
 
-            // 文字盤の角度を12時間時計として読み取り、現在の午前/午後を維持する
-            let clockProgress = (angle + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
-            let minutesInHalfDay = clockProgress / (Math.PI * 2) * 720;
-            let totalMinutes = minutesInHalfDay + (currentHours >= 12 ? 720 : 0);
-            const progress = totalMinutes / 1440;
+            // 角度差分を連続して積算する。1周=12時間、2周=24時間。
+            let deltaAngle = angle - sliderLastPointerAngle;
+            if (deltaAngle > Math.PI) deltaAngle -= Math.PI * 2;
+            if (deltaAngle < -Math.PI) deltaAngle += Math.PI * 2;
+            sliderAccumulatedAngle += deltaAngle;
+            sliderLastPointerAngle = angle;
 
-            updateSliderThumb(angle, progress);
+            const totalMinutes = sliderDragStartMinutes
+                + (sliderAccumulatedAngle / (Math.PI * 4)) * 1440;
+            const wrappedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+            const progress = wrappedMinutes / 1440;
+            const clockAngle = (wrappedMinutes % 720) / 720 * Math.PI * 2 - Math.PI / 2;
+
+            updateSliderThumb(clockAngle, progress);
             updateTimeOfDay(progress);
         }
 
