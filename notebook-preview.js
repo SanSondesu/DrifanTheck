@@ -64,6 +64,7 @@
             }
             if(stage>=2){const stamp=document.createElement('span');stamp.className='page-stamp';stamp.textContent=stage===2?'SEA\\nARCHIVE':'SEA\\nARCHIVE\\n✧  完  ✧';panel.appendChild(stamp);}
             if(stage>0){const ornament=document.createElement('div');ornament.className='page-decoration';ornament.textContent=stage===1?'⌁  ✧  ❧  ✧  ⌁':stage===2?'❧  ✧  ❖  ✧  ❧':'✧  ❖  ❧  ❖  ✧';panel.appendChild(ornament);}
+            if (window.DrifanEnhancements) DrifanEnhancements.renderLore(itemName);
         }
 
         function updateNotebookUI(selectedItem = null) {
