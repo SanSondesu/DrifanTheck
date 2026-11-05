@@ -19,7 +19,7 @@ function makeTexture(){
  x.fillStyle=grad;x.fillRect(0,0,128,64);return new THREE.CanvasTexture(c);
 }
 function individualize(){
- (g.floaters||[]).forEach(obj=>{
+ (typeof floaters!=='undefined'?floaters:[]).forEach(obj=>{
   const ud=obj.userData||(obj.userData={}),seed=Math.random();
   ud.appearanceSeed=seed;ud.appearanceScale=.975+seed*.05;
   obj.scale.multiplyScalar(ud.appearanceScale);
@@ -49,18 +49,18 @@ function init(){
   lanterns.forEach(lantern=>{
    const mat=new THREE.MeshBasicMaterial({map:reflectionTexture,color:0xffc18a,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
    const plane=new THREE.Mesh(geo,mat);plane.rotation.x=-Math.PI/2;plane.position.set(lantern.position.x,.035,lantern.position.z);plane.scale.set(9,4,1);plane.renderOrder=2;plane.raycast=()=>{};
-   g.scene.add(plane);reflections.push({lantern,plane,phase:Math.random()*Math.PI*2});
+   scene.add(plane);reflections.push({lantern,plane,phase:Math.random()*Math.PI*2});
   });
  }
  recordObservation('session');renderJournal();
 }
 function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
- if(!g.water||!g.scene)return;
+ if(!water||!scene)return;
  const dawn=smooth(.72,.96,progress)*(1-smooth(.12,.28,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
- const sunColor=g.water.material.uniforms&&g.water.material.uniforms.sunColor;
+ const sunColor=water.material.uniforms&&g.water.material.uniforms.sunColor;
  if(sunColor&&sunColor.value&&sunColor.value.isColor)sunColor.value.lerp(new THREE.Color(0xffbd91),twilight*.10);
  if(g.water.material.uniforms&&g.water.material.uniforms.distortionScale)g.water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
- if(g.scene.fog&&g.scene.fog.isFogExp2){g.scene.fog.color.set(0x8899aa).lerp(new THREE.Color(0x9bb4c8),dawn*.12+nightRatio*.05);g.scene.fog.density=.000012+dawn*.000018;}
+ if(scene.fog&&g.scene.fog.isFogExp2){g.scene.fog.color.set(0x8899aa).lerp(new THREE.Color(0x9bb4c8),dawn*.12+nightRatio*.05);g.scene.fog.density=.000012+dawn*.000018;}
 }
 function updateFrame(now,nightRatio){
  const t=now*.001;
@@ -74,25 +74,25 @@ function updateFrame(now,nightRatio){
  });
 }
 function makeObservationText(reason,itemName){
- const progress=Number.isFinite(g.currentProgress)?g.currentProgress:.5,hour=Math.floor(progress*24);
+ const progress=Number.isFinite(currentProgress)?currentProgress:.5,hour=Math.floor(progress*24);
  const period=hour<5?'夜更け':hour<9?'朝':hour<16?'昼':hour<19?'夕暮れ':'夜';
- const counts=Object.values(g.floaterDiscovery||{}).reduce((n,v)=>n+(v&&v.count||0),0);
+ const counts=Object.values(floaterDiscovery||{}).reduce((n,v)=>n+(v&&v.count||0),0);
  if(reason==='discovery')return period+'、'+itemName+'との出会いが記録された。海にはまだ、知らない旅の続きがある。';
  const lines=['静かな'+period+'の海を眺めた。水面の光は、ゆっくりと姿を変えていた。',period+'の海には、これまでに'+counts+'回の出会いが積み重なっている。漂流物はそれぞれの速さで流れていく。','波の音だけが続く'+period+'。遠くの景色は変わらなくても、海の表情は少しずつ違って見える。'];
  return lines[new Date().getDate()%lines.length];
 }
 function recordObservation(reason,itemName){
- const entries=g.seaObservationEntries||(g.seaObservationEntries=[]),date=new Date().toLocaleDateString('ja-JP');
+ const entries=seaObservationEntries||(seaObservationEntries=[]),date=new Date().toLocaleDateString('ja-JP');
  let entry=entries.find(x=>x.date===date);
  if(entry){
   if(reason==='discovery'&&itemName&&!entry.text.includes(itemName))entry.text+=' '+itemName+'との出会いもあった。';
  }else entries.push({date,text:makeObservationText(reason,itemName),createdAt:new Date().toISOString()});
  while(entries.length>90)entries.shift();
- renderJournal();if(typeof g.saveProgress==='function')g.saveProgress();
+ renderJournal();if(typeof saveProgress==='function')saveProgress();
 }
 function renderJournal(){
  const root=document.getElementById('sea-observation-list');if(!root)return;
- const entries=(g.seaObservationEntries||[]).slice(-7).reverse();root.textContent='';
+ const entries=(seaObservationEntries||[]).slice(-7).reverse();root.textContent='';
  if(!entries.length){const p=document.createElement('p');p.textContent='海で過ごした時間が、ここに記録されます。';root.appendChild(p);return;}
  entries.forEach(e=>{
   const article=document.createElement('div');article.className='observation-entry';
@@ -103,12 +103,12 @@ function renderJournal(){
 }
 function renderLore(itemName){
  const panel=document.getElementById('item-description'),data=lore[itemName];if(!panel||!data)return;
- if(((g.floaterDiscovery[itemName]||{}).count||0)<3)return;
+ if(((floaterDiscovery[itemName]||{}).count||0)<3)return;
  const note=document.createElement('div');note.className='lore-note';
  const origin=document.createElement('span');origin.textContent='来歴の仮説：'+data.origin;
  const clue=document.createElement('span');clue.style.display='block';clue.style.marginTop='6px';clue.textContent='観察メモ：'+data.clue;
  note.append(origin,clue);
- const instance=(g.floaters||[]).find(o=>typeof g.getFloaterItemName==='function'&&g.getFloaterItemName(o)===itemName);
+ const instance=(g.floaters||[]).find(o=>typeof typeof getFloaterItemName==='function'&&getFloaterItemName(o)===itemName);
  if(instance&&instance.userData.appearanceNote){const detail=document.createElement('span');detail.style.display='block';detail.style.marginTop='6px';detail.textContent='個体の特徴：'+instance.userData.appearanceNote;note.appendChild(detail);}
  panel.appendChild(note);
 }
