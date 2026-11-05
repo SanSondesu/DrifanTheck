@@ -59,8 +59,8 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
  const dawn=smooth(.72,.96,progress)*(1-smooth(.12,.28,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
  const sunColor=water.material.uniforms&&water.material.uniforms.sunColor;
  if(sunColor&&sunColor.value&&sunColor.value.isColor)sunColor.value.lerp(new THREE.Color(0xffbd91),twilight*.10);
- if(g.water.material.uniforms&&g.water.material.uniforms.distortionScale)g.water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
- if(scene.fog&&scene.fog.isFogExp2){g.scene.fog.color.set(0x8899aa).lerp(new THREE.Color(0x9bb4c8),dawn*.12+nightRatio*.05);g.scene.fog.density=.000012+dawn*.000018;}
+ if(water.material.uniforms&&water.material.uniforms.distortionScale)water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
+ if(scene.fog&&scene.fog.isFogExp2){scene.fog.color.set(0x8899aa).lerp(new THREE.Color(0x9bb4c8),dawn*.12+nightRatio*.05);scene.fog.density=.000012+dawn*.000018;}
 }
 function updateFrame(now,nightRatio){
  const t=now*.001;
@@ -108,7 +108,7 @@ function renderLore(itemName){
  const origin=document.createElement('span');origin.textContent='来歴の仮説：'+data.origin;
  const clue=document.createElement('span');clue.style.display='block';clue.style.marginTop='6px';clue.textContent='観察メモ：'+data.clue;
  note.append(origin,clue);
- const instance=(g.floaters||[]).find(o=>typeof getFloaterItemName==='function'&&getFloaterItemName(o)===itemName);
+ const instance=(typeof floaters!=='undefined'?floaters:[]).find(o=>typeof getFloaterItemName==='function'&&getFloaterItemName(o)===itemName);
  if(instance&&instance.userData.appearanceNote){const detail=document.createElement('span');detail.style.display='block';detail.style.marginTop='6px';detail.textContent='個体の特徴：'+instance.userData.appearanceNote;note.appendChild(detail);}
  panel.appendChild(note);
 }
