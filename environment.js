@@ -660,6 +660,22 @@
                 });
             }
 
+            // 月と蛍火の特別な漂流物も、控えめな明滅で呼吸するように輝かせる
+            for (const floater of floaters) {
+                const data = floater.userData || {};
+                if (!(data.isRareLantern || data.isRareRecord || data.isRareBoat)) continue;
+                floater.traverse((part) => {
+                    const animated = part.name === "firefly-mote" || part.name === "moon-glint-sparkle" || part.name === "sail-constellation";
+                    if (!animated) return;
+                    const phase = (part.userData.sparklePhase || 0) + time * (part.name === "firefly-mote" ? 1.25 : 1.7);
+                    const glow = 0.5 + 0.5 * Math.sin(phase);
+                    if (part.material && "opacity" in part.material) part.material.opacity = 0.22 + glow * 0.68;
+                    const base = part.userData.baseSparkleScale || 1;
+                    part.scale.setScalar(base * (0.78 + glow * 0.42));
+                    part.rotation.y = time * 0.45 + phase * 0.18;
+                });
+            }
+
             water.material.uniforms['time'].value += 0.2 * deltaSeconds; 
             
             if (bioluminescence) {
