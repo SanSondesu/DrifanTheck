@@ -540,7 +540,7 @@
                 const front = new THREE.Mesh(new THREE.ShapeGeometry(starShape),starMat);
                 front.position.set(0.16,0.92,0.028);boat.add(front);
                 const back = new THREE.Mesh(new THREE.ShapeGeometry(starShape),starMat.clone());
-                back.position.set(0.16,0.92,0.022);back.rotation.y=Math.PI;boat.add(back);
+                back.position.set(0.16,0.92,-0.028);back.rotation.y=Math.PI;boat.add(back);
                 const shellShape = new THREE.Shape();
                 shellShape.moveTo(0,-0.14);shellShape.bezierCurveTo(-0.12,-0.06,-0.16,0.08,-0.11,0.14);
                 shellShape.bezierCurveTo(-0.06,0.19,-0.025,0.14,0,0.17);shellShape.bezierCurveTo(0.025,0.14,0.06,0.19,0.11,0.14);
