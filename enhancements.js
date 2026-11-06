@@ -12,6 +12,8 @@ const lore={
 "手紙の入った古いボトル":{origin:"誰かが届けたかった言葉を抱えたまま、長い時間を海の上で過ごしてきた。",clue:"栓は閉じたまま。手紙の宛先も、差出人も、まだ分からない。"}
 };
 let reflections=[],reflectionTexture=null,initialized=false;
+let wind={x:0,z:0,strength:.012,phase:Math.random()*Math.PI*2};
+let lastWindLabel='そよ風';
 function smooth(a,b,x){const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);}
 function makeTexture(){
  const c=document.createElement('canvas');c.width=128;c.height=64;
@@ -58,13 +60,24 @@ function init(){
 function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
  if(!water||!scene)return;
  const dawn=smooth(.16,.24,progress)*(1-smooth(.30,.38,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
+ const dusk=smooth(.68,.76,progress)*(1-smooth(.82,.90,progress));
  const sunColor=water.material.uniforms&&water.material.uniforms.sunColor;
  if(sunColor&&sunColor.value&&sunColor.value.isColor)sunColor.value.lerp(new THREE.Color(0xffbd91),twilight*.10);
  if(water.material.uniforms&&water.material.uniforms.distortionScale)water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
- if(scene.fog&&scene.fog.isFogExp2){scene.fog.color.set(0x8899aa).lerp(new THREE.Color(0x9bb4c8),dawn*.12+nightRatio*.05);scene.fog.density=.000012+dawn*.000018;}
+ if(scene.fog&&scene.fog.isFogExp2){
+  const mistColor=new THREE.Color(0x8899aa).lerp(new THREE.Color(0xa9bdc8),dawn*.20+dusk*.07+nightRatio*.035);
+  scene.fog.color.copy(mistColor);
+  scene.fog.density=.000010+dawn*.000022+dusk*.000006;
+ }
 }
 function updateFrame(now,nightRatio){
  const t=now*.001;
+ const targetStrength=.008+.012*(.5+.5*Math.sin(t*.035+wind.phase))+.006*(.5+.5*Math.sin(t*.013+wind.phase*1.7));
+ wind.strength+=(targetStrength-wind.strength)*.012;
+ const direction=t*.018+Math.sin(t*.009+wind.phase)*.22;
+ wind.x=Math.cos(direction)*wind.strength;
+ wind.z=Math.sin(direction)*wind.strength;
+ lastWindLabel=wind.strength<.014?'そよ風':wind.strength<.021?'やわらかな風':'少し強い風';
  reflections.forEach(({lantern,plane,phase})=>{
   if(!lantern.parent)return;
   plane.position.x=lantern.position.x+Math.sin(t*.45+phase)*.7;
@@ -79,6 +92,7 @@ function makeObservationText(reason,itemName){
  const period=hour<5?'夜更け':hour<9?'朝':hour<16?'昼':hour<19?'夕暮れ':'夜';
  const counts=Object.values(floaterDiscovery||{}).reduce((n,v)=>n+(v&&v.count||0),0);
  if(reason==='discovery')return period+'、'+itemName+'との出会いが記録された。海にはまだ、知らない旅の続きがある。';
+ if(reason==='rare')return period+'、星屑を宿したガラスの浮き玉が流れてきた。光の角度によって、淡い色が静かに移ろっていた。';
  const lines=['静かな'+period+'の海を眺めた。水面の光は、ゆっくりと姿を変えていた。',period+'の海には、これまでに'+counts+'回の出会いが積み重なっている。漂流物はそれぞれの速さで流れていく。','波の音だけが続く'+period+'。遠くの景色は変わらなくても、海の表情は少しずつ違って見える。'];
  return lines[new Date().getDate()%lines.length];
 }
@@ -113,5 +127,5 @@ function renderLore(itemName){
  if(instance&&instance.userData.appearanceNote){const detail=document.createElement('span');detail.style.display='block';detail.style.marginTop='6px';detail.textContent='個体の特徴：'+instance.userData.appearanceNote;note.appendChild(detail);}
  panel.appendChild(note);
 }
-g.DrifanEnhancements=Object.freeze({init,updateTime,updateFrame,recordObservation,renderJournal,renderLore});
+g.DrifanEnhancements=Object.freeze({init,updateTime,updateFrame,recordObservation,renderJournal,renderLore,getWind:()=>wind,getWindLabel:()=>lastWindLabel});
 })(window);
