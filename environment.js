@@ -683,7 +683,8 @@
                     
                     birdsGroup.children.forEach(bird => {
                         const ud = bird.userData;
-                        ud.orbitPhase -= ud.orbitSpeed * 0.01 * frameScale; 
+                        const wind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {x:0,z:0,strength:0};
+                        ud.orbitPhase -= (ud.orbitSpeed * 0.01 + wind.strength * 0.012) * frameScale; 
                         
                         bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
                         bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
