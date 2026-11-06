@@ -812,7 +812,7 @@
                     sailStarFront.userData.sparklePhase = Math.random() * 6;
                     boat.add(sailStarFront);
                     const sailStarBack = new THREE.Mesh(starGeometry.clone(), sailStarMat.clone());
-                    sailStarBack.position.set(0.16, 0.92, 0.022);
+                    sailStarBack.position.set(0.16, 0.92, -0.028);
                     sailStarBack.rotation.y = Math.PI;
                     sailStarBack.name = "sail-constellation-back";
                     sailStarBack.userData.sparklePhase = sailStarFront.userData.sparklePhase;
