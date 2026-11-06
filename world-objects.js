@@ -229,6 +229,23 @@
         function createFloaters(bottleCount = 12, woodCount = 120, lanternCount = 15, watchCount = 4, recordCount = 4, glassBallCount = 15, boatCount = 5) {
             floaters = [];
 
+            // 毎回の海に少なくとも一つ、特別な漂流物が現れるようにする。
+            // 個別抽選の珍しさは残し、全種類が外れて何も出ない状況だけを防ぐ。
+            const rareCandidates = [
+                ["lantern", lanternCount], ["record", recordCount],
+                ["glassBall", glassBallCount], ["boat", boatCount]
+            ].filter(([, count]) => count > 0).map(([type]) => type);
+            const guaranteedRareType = rareCandidates.length
+                ? rareCandidates[Math.floor(Math.random() * rareCandidates.length)]
+                : null;
+
+            // 特別な個体は初期カメラの近くにも配置。モデルの形・色は変更しない。
+            function positionRareFloaterForDiscovery(group) {
+                group.position.x = (Math.random() - 0.5) * 64;
+                group.position.z = -18 - Math.random() * 42;
+                group.userData.rareDiscoverySpawn = true;
+            }
+
             for(let i=0; i<bottleCount; i++) {
                 createSingleBottle();
             }
@@ -416,7 +433,7 @@
             const lanternRingGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
             const lanternCandleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
 
-            const rareLanternIndex = Math.random() < 0.28 ? Math.floor(Math.random() * lanternCount) : -1;
+            const rareLanternIndex = lanternCount > 0 && (Math.random() < 0.28 || guaranteedRareType === 'lantern') ? Math.floor(Math.random() * lanternCount) : -1;
             for(let i=0; i<lanternCount; i++) {
                 const lanternGroup = new THREE.Group();
 
@@ -518,6 +535,7 @@
                     isNightExtra: isNightExtra,
                     isRareLantern: isRareLantern
                 };
+                if (isRareLantern) positionRareFloaterForDiscovery(lanternGroup);
                 scene.add(lanternGroup);
                 floaters.push(lanternGroup);
             }
@@ -603,7 +621,7 @@
                 floaters.push(watchGroup);
             }
 
-            const rareRecordIndex = Math.random() < 0.28 ? Math.floor(Math.random() * recordCount) : -1;
+            const rareRecordIndex = recordCount > 0 && (Math.random() < 0.28 || guaranteedRareType === 'record') ? Math.floor(Math.random() * recordCount) : -1;
             for(let i = 0; i < recordCount; i++) {
                 const recordGroup = new THREE.Group();
                 
@@ -663,11 +681,12 @@
                     isRecord: true,
                     isRareRecord: isRareRecord
                 };
+                if (isRareRecord) positionRareFloaterForDiscovery(recordGroup);
                 scene.add(recordGroup);
                 floaters.push(recordGroup);
             }
 
-            const rareGlassBallIndex = Math.random() < 0.38 ? Math.floor(Math.random() * glassBallCount) : -1;
+            const rareGlassBallIndex = glassBallCount > 0 && (Math.random() < 0.38 || guaranteedRareType === 'glassBall') ? Math.floor(Math.random() * glassBallCount) : -1;
             for(let i = 0; i < glassBallCount; i++) {
                 const ballGroup = new THREE.Group();
                 
@@ -741,12 +760,13 @@
                     isGlassBall: true,
                     isRareGlassBall: isRareGlassBall
                 };
+                if (isRareGlassBall) positionRareFloaterForDiscovery(ballGroup);
                 scene.add(ballGroup);
                 floaters.push(ballGroup);
             }
 
             // 小さな木製の船：素朴な帆船を少数だけ漂わせる
-            const rareBoatIndex = Math.random() < 0.24 ? Math.floor(Math.random() * boatCount) : -1;
+            const rareBoatIndex = boatCount > 0 && (Math.random() < 0.24 || guaranteedRareType === 'boat') ? Math.floor(Math.random() * boatCount) : -1;
             for (let i = 0; i < boatCount; i++) {
                 const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
                 const isRareBoat = i === rareBoatIndex;
@@ -772,6 +792,7 @@
                     isBoat: true,
                     isRareBoat: isRareBoat
                 };
+                if (isRareBoat) positionRareFloaterForDiscovery(boat);
                 scene.add(boat);
                 floaters.push(boat);
             }
