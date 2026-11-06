@@ -1,10 +1,25 @@
 /* notebook-preview.js: feature functions using shared app.js state. */
+        FLOATER_DESCRIPTIONS["星屑を宿したガラスの浮き玉"] = {
+            lines: [
+                "どこから流れてきたかわからない、星屑を宿したガラスの浮き玉。",
+                "古いガラスの奥に、夜空のかけらのような淡い光が浮かんでいる。",
+                "それが何を映しているのか、海はまだ何も語らない。"
+            ],
+            echoes: [
+                "光を受ける角度によって、金色にも青にも見える。",
+                "この海に流れ着くまで、いくつの夜を越えてきたのだろう。",
+                "小さな輪の輝きは、波の向こうの星と呼応しているようだ。",
+                "見つけた人だけが、その静かな光に気づく。"
+            ]
+        };
+
         function getFloaterItemName(group) {
             const d = group.userData || {};
             if (d.isBottle) return "手紙の入った古いボトル";
             if (d.isLantern) return "海を漂う古いランタン";
             if (d.isWatch) return "時を刻むアンティーク時計";
             if (d.isRecord) return "ノスタルジックな古いレコード盤";
+            if (d.isRareGlassBall) return "星屑を宿したガラスの浮き玉";
             if (d.isGlassBall) return "波間を漂うガラスの浮き玉";
             if (d.isBoat) return "小さな木製の船";
             return "波間を漂う古い流木";
@@ -22,7 +37,9 @@
             floaterDiscovery[itemName].count += 1;
             floaterDiscovery[itemName].lastAt = discoveredAt;
             if (!floaterDiscovery[itemName].firstAt) floaterDiscovery[itemName].firstAt = discoveredAt;
-            if (window.DrifanEnhancements) DrifanEnhancements.recordObservation('discovery', itemName);
+            if (window.DrifanEnhancements) {
+                DrifanEnhancements.recordObservation(group.userData.isRareGlassBall ? 'rare' : 'discovery', itemName);
+            }
             saveProgress();
             updateNotebookUI(itemName);
             return true;
