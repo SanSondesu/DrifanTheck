@@ -682,6 +682,17 @@
                     rareCore.position.set(0.12, 0.31, 0.12);
                     rareCore.name = "starlit-core";
                     ballGroup.add(rareCore);
+                    // 星のきらめき：ガラス玉の周囲に小さな星形の光を配置
+                    const sparkleMat = new THREE.MeshBasicMaterial({ color: 0xffedbd, transparent: true, opacity: 0.72, depthWrite: false });
+                    const sparklePositions = [[-0.25, 0.18, 0.22], [0.24, -0.12, 0.2], [0.02, 0.36, -0.2]];
+                    sparklePositions.forEach((p, sparkleIndex) => {
+                        const sparkle = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 0), sparkleMat.clone());
+                        sparkle.position.set(p[0], p[1], p[2]);
+                        sparkle.name = "starlit-sparkle";
+                        sparkle.userData.sparklePhase = sparkleIndex * 2.1 + Math.random() * 1.2;
+                        sparkle.userData.baseSparkleScale = 0.75 + Math.random() * 0.35;
+                        ballGroup.add(sparkle);
+                    });
                 }
 
                 // サイズも少しだけ大きくして見つけやすく
