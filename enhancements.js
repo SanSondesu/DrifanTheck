@@ -92,7 +92,7 @@ function makeObservationText(reason,itemName){
  const period=hour<5?'夜更け':hour<9?'朝':hour<16?'昼':hour<19?'夕暮れ':'夜';
  const counts=Object.values(floaterDiscovery||{}).reduce((n,v)=>n+(v&&v.count||0),0);
  if(reason==='discovery')return period+'、'+itemName+'との出会いが記録された。海にはまだ、知らない旅の続きがある。';
- if(reason==='rare')return period+'、星屑を宿したガラスの浮き玉が流れてきた。光の角度によって、淡い色が静かに移ろっていた。';
+ if(reason==='rare')return period+'、'+(itemName||'特別な漂流物')+'が流れてきた。いつもの漂流物とは少し違う、静かな輝きをまとっていた。';
  const lines=['静かな'+period+'の海を眺めた。水面の光は、ゆっくりと姿を変えていた。',period+'の海には、これまでに'+counts+'回の出会いが積み重なっている。漂流物はそれぞれの速さで流れていく。','波の音だけが続く'+period+'。遠くの景色は変わらなくても、海の表情は少しずつ違って見える。'];
  return lines[new Date().getDate()%lines.length];
 }
@@ -100,7 +100,10 @@ function recordObservation(reason,itemName){
  const entries=seaObservationEntries||(seaObservationEntries=[]),date=new Date().toLocaleDateString('ja-JP');
  let entry=entries.find(x=>x.date===date);
  if(entry){
-  if(reason==='discovery'&&itemName&&!entry.text.includes(itemName))entry.text+=' '+itemName+'との出会いもあった。';
+  if((reason==='discovery'||reason==='rare')&&itemName&&!entry.text.includes(itemName)){
+   const detail=reason==='rare'?'特別な漂流物「'+itemName+'」との出会いもあった。':'「'+itemName+'」との出会いもあった。';
+   entry.text+=' '+detail;
+  }
  }else entries.push({date,text:makeObservationText(reason,itemName),createdAt:new Date().toISOString()});
  while(entries.length>90)entries.shift();
  renderJournal();if(typeof saveProgress==='function')saveProgress();
