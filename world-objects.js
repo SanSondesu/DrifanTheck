@@ -639,6 +639,7 @@
                 floaters.push(recordGroup);
             }
 
+            const rareGlassBallIndex = Math.random() < 0.38 ? Math.floor(Math.random() * glassBallCount) : -1;
             for(let i = 0; i < glassBallCount; i++) {
                 const ballGroup = new THREE.Group();
                 
@@ -669,6 +670,20 @@
                 knot.position.y = 0.35;
                 ballGroup.add(knot);
 
+                const isRareGlassBall = i === rareGlassBallIndex;
+                if (isRareGlassBall) {
+                    const rareRingMat = new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.72, roughness: 0.28, emissive: 0x493316, emissiveIntensity: 0.16 });
+                    const rareRing = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.018, 8, 48), rareRingMat);
+                    rareRing.rotation.x = Math.PI / 2;
+                    rareRing.position.y = 0.02;
+                    rareRing.name = "starlit-ring";
+                    ballGroup.add(rareRing);
+                    const rareCore = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffe8b0 }));
+                    rareCore.position.set(0.12, 0.31, 0.12);
+                    rareCore.name = "starlit-core";
+                    ballGroup.add(rareCore);
+                }
+
                 // サイズも少しだけ大きくして見つけやすく
                 ballGroup.scale.set(2.2, 2.2, 2.2);
                 ballGroup.position.x = (Math.random() - 0.5) * 300;
@@ -684,7 +699,8 @@
                     phase: Math.random() * Math.PI * 2,
                     bobHeight: 0.04 + Math.random() * 0.02,
                     isBottle: false,
-                    isGlassBall: true
+                    isGlassBall: true,
+                    isRareGlassBall: isRareGlassBall
                 };
                 scene.add(ballGroup);
                 floaters.push(ballGroup);
