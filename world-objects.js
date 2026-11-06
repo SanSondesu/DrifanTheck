@@ -501,10 +501,22 @@
                         mote.userData.sparklePhase = n * 1.7 + Math.random();
                         lanternGroup.add(mote);
                     }
+                    const trimMat = new THREE.MeshStandardMaterial({ color: 0x9b8050, metalness: 0.68, roughness: 0.38 });
+                    // ガラス窓の上下に細い真鍮の縁取りを加え、枠の精度を上げる
+                    [0.075, 0.79].forEach(y => {
+                        const trim = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.018, 0.62), trimMat);
+                        trim.position.y = y;
+                        trim.name = "lantern-brass-trim";
+                        lanternGroup.add(trim);
+                    });
                     const crescent = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 24, Math.PI * 1.35), new THREE.MeshStandardMaterial({ color: 0xd9c99b, metalness: 0.65, roughness: 0.3, emissive: 0x493d20, emissiveIntensity: 0.12 }));
                     crescent.position.set(0, 1.58, 0);
                     crescent.name = "firefly-crescent";
                     lanternGroup.add(crescent);
+                    const finial = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), new THREE.MeshStandardMaterial({ color: 0xe4cc91, metalness: 0.62, roughness: 0.32, emissive: 0x493d20, emissiveIntensity: 0.08 }));
+                    finial.position.set(0, 1.72, 0);
+                    finial.name = "lantern-star-finial";
+                    lanternGroup.add(finial);
                 }
                 lanternGroup.userData = {
                     baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
@@ -588,6 +600,38 @@
                 watchGroup.add(ring);
 
                 if (isRareWatch) {
+                    // 文字盤の外周を二重ベゼルにし、12個の目盛りを立体的に配置
+                    const bezelMat = new THREE.MeshStandardMaterial({ color: 0xb18b4e, metalness: 0.78, roughness: 0.3 });
+                    const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.274, 0.009, 6, 64), bezelMat);
+                    bezel.rotation.x = Math.PI / 2;
+                    bezel.position.y = 0.061;
+                    watchGroup.add(bezel);
+                    const innerBezel = new THREE.Mesh(new THREE.TorusGeometry(0.238, 0.0035, 5, 64), new THREE.MeshStandardMaterial({ color: 0x9b825b, metalness: 0.55, roughness: 0.48 }));
+                    innerBezel.rotation.x = Math.PI / 2;
+                    innerBezel.position.y = 0.063;
+                    watchGroup.add(innerBezel);
+                    const indexMat = new THREE.MeshStandardMaterial({ color: 0x80653b, metalness: 0.48, roughness: 0.52 });
+                    for (let tick = 0; tick < 60; tick++) {
+                        const angle = tick / 60 * Math.PI * 2;
+                        const major = tick % 5 === 0;
+                        const marker = new THREE.Mesh(new THREE.BoxGeometry(major ? 0.012 : 0.005, 0.003, major ? 0.026 : 0.012), indexMat);
+                        marker.position.set(Math.sin(angle) * 0.218, 0.064, Math.cos(angle) * 0.218);
+                        marker.rotation.y = angle;
+                        watchGroup.add(marker);
+                    }
+                    const starShape = new THREE.Shape();
+                    for (let p = 0; p < 10; p++) {
+                        const angle = Math.PI / 2 + p * Math.PI / 5;
+                        const radius = p % 2 === 0 ? 0.052 : 0.024;
+                        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+                        if (p === 0) starShape.moveTo(x, y); else starShape.lineTo(x, y);
+                    }
+                    starShape.closePath();
+                    const centerStar = new THREE.Mesh(new THREE.ShapeGeometry(starShape), new THREE.MeshStandardMaterial({ color: 0xc5a45d, metalness: 0.68, roughness: 0.3, side: THREE.DoubleSide }));
+                    centerStar.rotation.x = -Math.PI / 2;
+                    centerStar.position.set(0, 0.079, 0);
+                    centerStar.name = "watch-center-star";
+                    watchGroup.add(centerStar);
                     // 潮風の懐中時計：細く長い真鍮色の鎖を、上部の環からゆるやかに垂らす
                     const chainCurve = new THREE.CatmullRomCurve3([
                         new THREE.Vector3(0, 0, -0.46),
@@ -610,6 +654,10 @@
                     );
                     patinaRing.position.y = 0.058;
                     watchGroup.add(patinaRing);
+                    const crownRim = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.008, 6, 24), bezelMat);
+                    crownRim.position.set(0, 0, -0.34);
+                    crownRim.rotation.x = Math.PI / 2;
+                    watchGroup.add(crownRim);
                 }
 
                 watchGroup.scale.set(1.5, 1.5, 1.5);
@@ -687,6 +735,20 @@
                     recordGroup.add(moon);
                     const glintMat = new THREE.MeshBasicMaterial({ color: 0xe7f4ff, transparent: true, opacity: 0.65, depthWrite: false });
                     for (let n = 0; n < 3; n++) { const glint = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 0), glintMat.clone()); glint.position.set(-0.25 + n * 0.24, 0.035, 0.12 + (n % 2) * 0.12); glint.name = "moon-glint-sparkle"; glint.userData.sparklePhase = n * 2.1 + Math.random(); recordGroup.add(glint); }
+                    // 盤面の外側に細密な溝を追加。反射は控えめにして黒い盤面を保つ
+                    const grooveMat = new THREE.MeshStandardMaterial({ color: 0x343943, roughness: 0.28, metalness: 0.62 });
+                    for (let groove = 0; groove < 18; groove++) {
+                        const radius = 0.205 + groove * 0.012;
+                        const line = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.0017, 4, 96), grooveMat);
+                        line.rotation.x = Math.PI / 2;
+                        line.position.y = 0.0135;
+                        line.name = "fine-vinyl-groove";
+                        recordGroup.add(line);
+                    }
+                    const labelStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 0), new THREE.MeshStandardMaterial({ color: 0xe2d5b6, metalness: 0.55, roughness: 0.32 }));
+                    labelStar.position.set(-0.105, 0.027, -0.085);
+                    labelStar.name = "record-label-star";
+                    recordGroup.add(labelStar);
                 }
                 recordGroup.scale.set(2.0, 2.0, 2.0);
                 recordGroup.position.x = (Math.random() - 0.5) * 300;
@@ -763,6 +825,17 @@
                         sparkle.userData.sparklePhase = sparkleIndex * 2.1 + Math.random() * 1.2;
                         sparkle.userData.baseSparkleScale = 0.75 + Math.random() * 0.35;
                         ballGroup.add(sparkle);
+                    });
+                    const innerOrbit = new THREE.Mesh(new THREE.TorusGeometry(0.235, 0.004, 5, 48), new THREE.MeshStandardMaterial({ color: 0xd6c59a, metalness: 0.62, roughness: 0.34, transparent: true, opacity: 0.68 }));
+                    innerOrbit.rotation.set(0.72, 0.35, 0.2);
+                    innerOrbit.name = "inner-starlight-orbit";
+                    ballGroup.add(innerOrbit);
+                    const bubbleMat = new THREE.MeshPhysicalMaterial({ color: 0xccecff, transparent: true, opacity: 0.42, roughness: 0.08, metalness: 0.05 });
+                    [[-0.12,0.08,-0.18],[0.18,-0.04,-0.12],[-0.04,-0.2,0.12],[0.16,0.18,-0.08]].forEach((p, bubbleIndex) => {
+                        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.018 + (bubbleIndex % 2) * 0.008, 8, 8), bubbleMat);
+                        bubble.position.set(p[0], p[1], p[2]);
+                        bubble.name = "trapped-glass-bubble";
+                        ballGroup.add(bubble);
                     });
                 }
 
@@ -855,6 +928,25 @@
                     sternOrnament.rotation.y = -Math.PI / 2;
                     sternOrnament.name = "stern-shell-ornament";
                     boat.add(sternOrnament);
+                    // 船体の木目を細い曲線で表現。船の輪郭を変えず、表面だけを豊かにする
+                    const grainMat = new THREE.MeshStandardMaterial({ color: 0xb18a5e, roughness: 0.92, transparent: true, opacity: 0.52 });
+                    for (let grain = -2; grain <= 2; grain++) {
+                        const z = grain * 0.105;
+                        const curve = new THREE.QuadraticBezierCurve3(
+                            new THREE.Vector3(-0.92, 0.105, z),
+                            new THREE.Vector3(-0.12, 0.12, z * 0.92),
+                            new THREE.Vector3(0.92, 0.105, z * 0.72)
+                        );
+                        boat.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 18, 0.006, 5, false), grainMat));
+                    }
+                    // 帆の縁に控えめな縫い目を並べる
+                    const stitchMat = new THREE.MeshStandardMaterial({ color: 0xb9a98c, roughness: 0.96, side: THREE.DoubleSide });
+                    for (let stitch = 0; stitch < 9; stitch++) {
+                        const y = 0.22 + stitch * 0.14;
+                        const seam = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), stitchMat);
+                        seam.position.set(-0.145 + stitch * 0.003, y, 0.062);
+                        boat.add(seam);
+                    }
                 }
                 boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
                 if (isRareBoat) boat.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
