@@ -807,12 +807,12 @@
                     // 帆の両面に、それぞれ外側を向いた五芒星を貼り付ける
                     const starGeometry = new THREE.ShapeGeometry(starShape);
                     const sailStarFront = new THREE.Mesh(starGeometry, sailStarMat);
-                    sailStarFront.position.set(0.16, 0.92, 0.064);
+                    sailStarFront.position.set(0.16, 0.92, 0.028);
                     sailStarFront.name = "sail-constellation-front";
                     sailStarFront.userData.sparklePhase = Math.random() * 6;
                     boat.add(sailStarFront);
                     const sailStarBack = new THREE.Mesh(starGeometry.clone(), sailStarMat.clone());
-                    sailStarBack.position.set(0.16, 0.92, -0.064);
+                    sailStarBack.position.set(0.16, 0.92, 0.022);
                     sailStarBack.rotation.y = Math.PI;
                     sailStarBack.name = "sail-constellation-back";
                     sailStarBack.userData.sparklePhase = sailStarFront.userData.sparklePhase;
@@ -850,7 +850,8 @@
                     );
                     shellPearl.position.set(0, 0.045, 0.018);
                     sternOrnament.add(shellPearl);
-                    sternOrnament.position.set(-1.285, 0.105, 0);
+                    sternOrnament.position.set(-1.245, 0.02, 0);
+                    sternOrnament.scale.setScalar(0.78);
                     sternOrnament.rotation.y = -Math.PI / 2;
                     sternOrnament.name = "stern-shell-ornament";
                     boat.add(sternOrnament);
