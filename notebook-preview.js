@@ -1,18 +1,18 @@
 /* notebook-preview.js: feature functions using shared app.js state. */
-        FLOATER_DESCRIPTIONS["蛍火をまとったランタン"] = {
+        FLOATER_DESCRIPTIONS["⭐ 蛍火をまとったランタン"] = {
             lines: ["どこから流れてきたかわからない、蛍火をまとったランタン。","その周りには、小さな光の粒が静かに集まっている。","まるで夜の海を渡る蛍たちが、帰る場所を見つけたようだ。"],
             echoes: ["光の粒は、風に押されるようにゆっくりと漂う。","灯りのそばには、夜空の欠片が集まるのかもしれない。","ひとつ消えると、また別の光がそっと現れる。","この灯りを目印に、誰かが帰ってくるのだろうか。"]
         };
-        FLOATER_DESCRIPTIONS["月光を映すレコード"] = {
+        FLOATER_DESCRIPTIONS["⭐ 月光を映すレコード"] = {
             lines: ["どこから流れてきたかわからない、月光を映すレコード。","盤面には、夜の海のような青白い光が静かに走る。","溝の奥には、月の見えた夜の旋律が眠っているようだ。"],
             echoes: ["回転するたび、銀色の光が細く弧を描く。","この盤を聴いていた部屋にも、月明かりは届いただろうか。","音のない海に、遠い旋律だけが残っている。","中心の小さな月は、夜ごと違う表情を見せる。"]
         };
-        FLOATER_DESCRIPTIONS["星航りの小舟"] = {
+        FLOATER_DESCRIPTIONS["⭐ 星航りの小舟"] = {
             lines: ["どこから流れてきたかわからない、星航りの小舟。","帆には小さな星座が縫い込まれ、船尾には真鍮の星飾りがある。","行き先を決めるのは、帆を揺らす風と、遠い星なのかもしれない。"],
             echoes: ["星の刺繍は、暗い海でもかすかに浮かび上がる。","この小舟は、水平線の向こうに何を見つけるのだろう。","風が変わるたび、星座も違う方角を指しているようだ。","小さな船にも、広い夜空を渡る夢がある。"]
         };
 
-        FLOATER_DESCRIPTIONS["星屑を宿したガラスの浮き玉"] = {
+        FLOATER_DESCRIPTIONS["⭐ 星屑を宿したガラスの浮き玉"] = {
             lines: [
                 "どこから流れてきたかわからない、星屑を宿したガラスの浮き玉。",
                 "古いガラスの奥に、夜空のかけらのような淡い光が浮かんでいる。",
@@ -26,17 +26,32 @@
             ]
         };
 
+        FLOATER_DESCRIPTIONS["⭐ 潮風の懐中時計"] = {
+            lines: [
+                "どこから流れてきたかわからない、潮風の懐中時計。",
+                "少しくすんだ真鍮のケースに、アイボリーの文字盤と細く長い鎖が添えられている。",
+                "小さな傷のひとつひとつに、長い旅の時間が残っているようだ。"
+            ],
+            echoes: [
+                "鎖は波に揺られ、かすかな光を返している。",
+                "この時計は、誰かの大切な時間を見守っていたのだろうか。",
+                "真鍮の色は、潮風に磨かれて少しずつ深くなったようだ。",
+                "針の先には、まだ帰る場所の時刻が残っているのかもしれない。"
+            ]
+        };
+
         function getFloaterItemName(group) {
             const d = group.userData || {};
             if (d.isBottle) return "手紙の入った古いボトル";
-            if (d.isRareLantern) return "蛍火をまとったランタン";
+            if (d.isRareLantern) return "⭐ 蛍火をまとったランタン";
             if (d.isLantern) return "海を漂う古いランタン";
+            if (d.isRareWatch) return "⭐ 潮風の懐中時計";
             if (d.isWatch) return "時を刻むアンティーク時計";
-            if (d.isRareRecord) return "月光を映すレコード";
+            if (d.isRareRecord) return "⭐ 月光を映すレコード";
             if (d.isRecord) return "ノスタルジックな古いレコード盤";
-            if (d.isRareGlassBall) return "星屑を宿したガラスの浮き玉";
+            if (d.isRareGlassBall) return "⭐ 星屑を宿したガラスの浮き玉";
             if (d.isGlassBall) return "波間を漂うガラスの浮き玉";
-            if (d.isRareBoat) return "星航りの小舟";
+            if (d.isRareBoat) return "⭐ 星航りの小舟";
             if (d.isBoat) return "小さな木製の船";
             return "波間を漂う古い流木";
         }
