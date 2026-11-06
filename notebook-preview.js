@@ -392,8 +392,12 @@
                     mote.position.set(Math.cos(a) * 0.55, 0.48 + Math.sin(i * 2.4) * 0.28, Math.sin(a) * 0.55);
                     group.add(mote);
                 }
+                const trimMat = new THREE.MeshStandardMaterial({ color: 0x9b8050, metalness: 0.68, roughness: 0.38 });
+                [0.075, 0.79].forEach(y => { const trim = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.018, 0.62), trimMat); trim.position.y = y; group.add(trim); });
                 const moon = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 24, Math.PI * 1.35), new THREE.MeshStandardMaterial({ color: 0xd9c99b, metalness: 0.65, roughness: 0.3 }));
                 moon.position.set(0, 1.58, 0); group.add(moon);
+                const finial = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), new THREE.MeshStandardMaterial({ color: 0xe4cc91, metalness: 0.62, roughness: 0.32 }));
+                finial.position.set(0, 1.72, 0); group.add(finial);
             }
             group.scale.set(1.5, 1.5, 1.5);
             group.position.y = -0.5;
@@ -413,6 +417,17 @@
             mHand.position.set(0, 0.07, 0); mHand.rotation.y = 0.5; group.add(mHand);
 
             if (isRare) {
+                const bezelMat = new THREE.MeshStandardMaterial({ color: 0xb18b4e, metalness: 0.78, roughness: 0.3 });
+                const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.274, 0.009, 6, 64), bezelMat);
+                bezel.rotation.x = Math.PI / 2; bezel.position.y = 0.061; group.add(bezel);
+                const innerBezel = new THREE.Mesh(new THREE.TorusGeometry(0.238, 0.0035, 5, 64), new THREE.MeshStandardMaterial({ color: 0x9b825b, metalness: 0.55, roughness: 0.48 }));
+                innerBezel.rotation.x = Math.PI / 2; innerBezel.position.y = 0.063; group.add(innerBezel);
+                const indexMat = new THREE.MeshStandardMaterial({ color: 0x80653b, metalness: 0.48, roughness: 0.52 });
+                for (let tick = 0; tick < 60; tick++) {
+                    const angle = tick / 60 * Math.PI * 2, major = tick % 5 === 0;
+                    const marker = new THREE.Mesh(new THREE.BoxGeometry(major ? 0.012 : 0.005, 0.003, major ? 0.026 : 0.012), indexMat);
+                    marker.position.set(Math.sin(angle) * 0.218, 0.064, Math.cos(angle) * 0.218); marker.rotation.y = angle; group.add(marker);
+                }
                 // 時針と分針の始点に、小さな真鍮色の五芒星を添える
                 const starShape = new THREE.Shape();
                 for (let i = 0; i < 10; i++) {
@@ -440,6 +455,8 @@
             crown.position.set(0, 0, -0.34); crown.rotation.x = Math.PI / 2; group.add(crown);
             
             if (isRare) {
+                const crownRim = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.008, 6, 24), brassMat);
+                crownRim.position.set(0, 0, -0.34); crownRim.rotation.x = Math.PI / 2; group.add(crownRim);
                 const chainCurve = new THREE.CatmullRomCurve3([
                     new THREE.Vector3(0, 0, -0.46), new THREE.Vector3(-0.04, -0.025, -0.66),
                     new THREE.Vector3(-0.13, -0.04, -0.86), new THREE.Vector3(-0.1, -0.035, -1.08),
@@ -489,6 +506,14 @@
                 moonShape.bezierCurveTo(-0.035, 0.065, 0.025, 0.105, 0.105, 0.12);
                 const moon = new THREE.Mesh(new THREE.ShapeGeometry(moonShape, 24), new THREE.MeshStandardMaterial({ color: 0xdce3e8, metalness: 0.42, roughness: 0.38, side: THREE.DoubleSide }));
                 moon.rotation.x = -Math.PI / 2; moon.position.set(0.02, 0.028, 0.015); group.add(moon);
+                const grooveMat = new THREE.MeshStandardMaterial({ color: 0x343943, roughness: 0.28, metalness: 0.62 });
+                for (let groove = 0; groove < 18; groove++) {
+                    const radius = 0.205 + groove * 0.012;
+                    const line = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.0017, 4, 96), grooveMat);
+                    line.rotation.x = Math.PI / 2; line.position.y = 0.0135; group.add(line);
+                }
+                const labelStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 0), new THREE.MeshStandardMaterial({ color: 0xe2d5b6, metalness: 0.55, roughness: 0.32 }));
+                labelStar.position.set(-0.105, 0.027, -0.085); group.add(labelStar);
             }
             group.scale.set(3, 3, 3);
             group.rotation.x = Math.PI / 3;
@@ -591,6 +616,17 @@
                 shellShape.bezierCurveTo(0.16,0.08,0.12,-0.06,0,-0.14);
                 const ornament = new THREE.Mesh(new THREE.ShapeGeometry(shellShape,16),new THREE.MeshStandardMaterial({color:0xb99459,metalness:0.58,roughness:0.48,side:THREE.DoubleSide}));
                 ornament.position.set(-1.245,0.02,0);ornament.rotation.y=-Math.PI/2;ornament.scale.setScalar(0.78);boat.add(ornament);
+                const grainMat = new THREE.MeshStandardMaterial({ color: 0xb18a5e, roughness: 0.92, transparent: true, opacity: 0.52 });
+                for (let grain = -2; grain <= 2; grain++) {
+                    const z = grain * 0.105;
+                    const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.92,0.105,z),new THREE.Vector3(-0.12,0.12,z*0.92),new THREE.Vector3(0.92,0.105,z*0.72));
+                    boat.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,0.006,5,false),grainMat));
+                }
+                const stitchMat = new THREE.MeshStandardMaterial({ color: 0xb9a98c, roughness: 0.96, side: THREE.DoubleSide });
+                for (let stitch = 0; stitch < 9; stitch++) {
+                    const seam = new THREE.Mesh(new THREE.SphereGeometry(0.012,6,6),stitchMat);
+                    seam.position.set(-0.145 + stitch * 0.003,0.22 + stitch * 0.14,0.062); boat.add(seam);
+                }
             }
             return boat;
         }
@@ -633,6 +669,10 @@
                 core.position.set(0.12, 0.31, 0.12); group.add(core);
                 const sparkleMat = new THREE.MeshBasicMaterial({ color: 0xffedbd });
                 [[-0.25,0.18,0.22],[0.24,-0.12,0.2],[0.02,0.36,-0.2]].forEach(p=>{const star=new THREE.Mesh(new THREE.OctahedronGeometry(0.045,0),sparkleMat.clone());star.position.set(p[0],p[1],p[2]);group.add(star);});
+                const innerOrbit = new THREE.Mesh(new THREE.TorusGeometry(0.235,0.004,5,48),new THREE.MeshStandardMaterial({color:0xd6c59a,metalness:0.62,roughness:0.34,transparent:true,opacity:0.68}));
+                innerOrbit.rotation.set(0.72,0.35,0.2); group.add(innerOrbit);
+                const bubbleMat = new THREE.MeshPhysicalMaterial({color:0xccecff,transparent:true,opacity:0.42,roughness:0.08,metalness:0.05});
+                [[-0.12,0.08,-0.18],[0.18,-0.04,-0.12],[-0.04,-0.2,0.12],[0.16,0.18,-0.08]].forEach((p,i)=>{const bubble=new THREE.Mesh(new THREE.SphereGeometry(0.018+(i%2)*0.008,8,8),bubbleMat);bubble.position.set(p[0],p[1],p[2]);group.add(bubble);});
             }
             group.scale.set(3.5, 3.5, 3.5);
             group.position.y = -0.2;
