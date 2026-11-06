@@ -416,7 +416,7 @@
             const lanternRingGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
             const lanternCandleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
 
-            const rareLanternIndex = Math.random() < 0.28 ? Math.floor(Math.random() * lanternCount) : -1;
+            const rareLanternIndex = lanternCount > 0 ? Math.floor(Math.random() * lanternCount) : -1;
             for(let i=0; i<lanternCount; i++) {
                 const lanternGroup = new THREE.Group();
 
@@ -490,6 +490,8 @@
                 lanternGroup.position.y = 0;
                 const isRareLantern = i === rareLanternIndex;
                 if (isRareLantern) {
+                    // レア個体は視界に入りやすい中央寄りへ配置する（モデル形状は変更しない）。
+                    lanternGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const fireflyMat = new THREE.MeshBasicMaterial({ color: 0xffe6a6, transparent: true, opacity: 0.7, depthWrite: false });
                     for (let n = 0; n < 5; n++) {
                         const mote = new THREE.Mesh(new THREE.SphereGeometry(0.018 + Math.random() * 0.012, 8, 8), fireflyMat.clone());
@@ -603,7 +605,7 @@
                 floaters.push(watchGroup);
             }
 
-            const rareRecordIndex = Math.random() < 0.28 ? Math.floor(Math.random() * recordCount) : -1;
+            const rareRecordIndex = recordCount > 0 ? Math.floor(Math.random() * recordCount) : -1;
             for(let i = 0; i < recordCount; i++) {
                 const recordGroup = new THREE.Group();
                 
@@ -640,6 +642,7 @@
 
                 const isRareRecord = i === rareRecordIndex;
                 if (isRareRecord) {
+                    recordGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const moonMat = new THREE.MeshStandardMaterial({ color: 0xd9e5ef, metalness: 0.72, roughness: 0.22, emissive: 0x25394d, emissiveIntensity: 0.18 });
                     const moon = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 8, 32, Math.PI * 1.55), moonMat);
                     moon.rotation.x = Math.PI / 2; moon.position.set(0.02, 0.025, 0.015); moon.name = "moon-glint"; recordGroup.add(moon);
@@ -667,7 +670,7 @@
                 floaters.push(recordGroup);
             }
 
-            const rareGlassBallIndex = Math.random() < 0.38 ? Math.floor(Math.random() * glassBallCount) : -1;
+            const rareGlassBallIndex = glassBallCount > 0 ? Math.floor(Math.random() * glassBallCount) : -1;
             for(let i = 0; i < glassBallCount; i++) {
                 const ballGroup = new THREE.Group();
                 
@@ -700,6 +703,7 @@
 
                 const isRareGlassBall = i === rareGlassBallIndex;
                 if (isRareGlassBall) {
+                    ballGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const rareRingMat = new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.72, roughness: 0.28, emissive: 0x493316, emissiveIntensity: 0.16 });
                     const rareRing = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.018, 8, 48), rareRingMat);
                     rareRing.rotation.x = Math.PI / 2;
@@ -746,11 +750,12 @@
             }
 
             // 小さな木製の船：素朴な帆船を少数だけ漂わせる
-            const rareBoatIndex = Math.random() < 0.24 ? Math.floor(Math.random() * boatCount) : -1;
+            const rareBoatIndex = boatCount > 0 ? Math.floor(Math.random() * boatCount) : -1;
             for (let i = 0; i < boatCount; i++) {
                 const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
                 const isRareBoat = i === rareBoatIndex;
                 if (isRareBoat) {
+                    boat.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const sailStarMat = new THREE.MeshBasicMaterial({ color: 0xf2dfad, transparent: true, opacity: 0.82, depthWrite: false });
                     const sailStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), sailStarMat);
                     sailStar.position.set(0.02, 0.82, 0.035); sailStar.name = "sail-constellation"; sailStar.userData.sparklePhase = Math.random() * 6;
