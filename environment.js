@@ -665,7 +665,7 @@
                 const data = floater.userData || {};
                 if (!(data.isRareLantern || data.isRareRecord || data.isRareBoat)) continue;
                 floater.traverse((part) => {
-                    const animated = part.name === "firefly-mote" || part.name === "moon-glint-sparkle" || part.name === "sail-constellation";
+                    const animated = part.name === "firefly-mote" || part.name === "moon-glint-sparkle" || part.name === "sail-constellation" || part.name === "sail-constellation-front" || part.name === "sail-constellation-back";
                     if (!animated) return;
                     const phase = (part.userData.sparklePhase || 0) + time * (part.name === "firefly-mote" ? 1.25 : 1.7);
                     const glow = 0.5 + 0.5 * Math.sin(phase);
