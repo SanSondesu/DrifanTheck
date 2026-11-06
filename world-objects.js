@@ -642,7 +642,6 @@
 
                 const isRareRecord = i === rareRecordIndex;
                 if (isRareRecord) {
-                    recordGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const moonMat = new THREE.MeshStandardMaterial({ color: 0xd9e5ef, metalness: 0.72, roughness: 0.22, emissive: 0x25394d, emissiveIntensity: 0.18 });
                     const moon = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 8, 32, Math.PI * 1.55), moonMat);
                     moon.rotation.x = Math.PI / 2; moon.position.set(0.02, 0.025, 0.015); moon.name = "moon-glint"; recordGroup.add(moon);
@@ -652,6 +651,7 @@
                 recordGroup.scale.set(2.0, 2.0, 2.0);
                 recordGroup.position.x = (Math.random() - 0.5) * 300;
                 recordGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                if (isRareRecord) recordGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                 recordGroup.position.y = 0;
                 
                 recordGroup.userData = {
@@ -703,7 +703,6 @@
 
                 const isRareGlassBall = i === rareGlassBallIndex;
                 if (isRareGlassBall) {
-                    ballGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const rareRingMat = new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.72, roughness: 0.28, emissive: 0x493316, emissiveIntensity: 0.16 });
                     const rareRing = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.018, 8, 48), rareRingMat);
                     rareRing.rotation.x = Math.PI / 2;
@@ -731,6 +730,7 @@
                 ballGroup.scale.set(2.2, 2.2, 2.2);
                 ballGroup.position.x = (Math.random() - 0.5) * 300;
                 ballGroup.position.z = (Math.random() - 0.5) * 200 - 20;
+                if (isRareGlassBall) ballGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                 ballGroup.position.y = 0;
                 
                 ballGroup.userData = {
@@ -755,7 +755,6 @@
                 const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
                 const isRareBoat = i === rareBoatIndex;
                 if (isRareBoat) {
-                    boat.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                     const sailStarMat = new THREE.MeshBasicMaterial({ color: 0xf2dfad, transparent: true, opacity: 0.82, depthWrite: false });
                     const sailStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), sailStarMat);
                     sailStar.position.set(0.02, 0.82, 0.035); sailStar.name = "sail-constellation"; sailStar.userData.sparklePhase = Math.random() * 6;
@@ -764,6 +763,7 @@
                     sternCharm.position.set(0, 0.18, -0.55); sternCharm.name = "stern-star-charm"; boat.add(sternCharm);
                 }
                 boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
+                if (isRareBoat) boat.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
                 boat.rotation.y = Math.random() * Math.PI * 2;
                 boat.userData = {
                     baseSpeedX: -0.008 - Math.random() * 0.006,
