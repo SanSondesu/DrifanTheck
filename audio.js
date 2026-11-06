@@ -119,7 +119,7 @@
             
             const now = new Date();
             const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-            showMessage("古い時計の針が、静かに時を刻んでいる。\n\n[ " + timeStr + " ]");
+            showMessage("古い時計の針が、静かに時を刻んでいる。\n\n[ " + timeStr + " ]", false);
 
             let count = 0;
             const tick = () => {
@@ -160,7 +160,7 @@
             if(!audioCtx || audioCtx.state !== 'running') return;
             const now = audioCtx.currentTime;
             
-            showMessage("古いレコード盤から、\n波の音に混じってノスタルジックなメロディが聴こえる…");
+            showMessage("古いレコード盤から、\n波の音に混じってノスタルジックなメロディが聴こえる…", false);
 
             const noiseOsc = audioCtx.createOscillator();
             noiseOsc.type = 'sawtooth';
@@ -221,7 +221,7 @@
             if(!audioCtx || audioCtx.state !== 'running') return;
             const now = audioCtx.currentTime;
 
-            showMessage("波に揺られて、\nガラスの浮き玉が「カラン…」と涼しげな音を立てた。");
+            showMessage("波に揺られて、\nガラスの浮き玉が「カラン…」と涼しげな音を立てた。", false);
 
             // Two soft, consonant C-major glass chimes: "ta-tan...".
             // Keep every partial at or below 3000 Hz for a gentler, less piercing tone.
