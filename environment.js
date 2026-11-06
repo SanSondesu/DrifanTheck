@@ -645,6 +645,21 @@
             const nowMs = now;
             if (window.DrifanEnhancements) DrifanEnhancements.updateFrame(nowMs, currentNightRatio);
 
+            // レアな浮き玉の星形パーツを、控えめに明滅させる
+            for (const floater of floaters) {
+                if (!floater.userData || !floater.userData.isRareGlassBall) continue;
+                floater.traverse((part) => {
+                    if (part.name !== "starlit-sparkle") return;
+                    const phase = (part.userData.sparklePhase || 0) + time * 2.0;
+                    const twinkle = 0.5 + 0.5 * Math.sin(phase);
+                    const scale = (part.userData.baseSparkleScale || 1) * (0.68 + twinkle * 0.58);
+                    part.scale.setScalar(scale);
+                    part.material.opacity = 0.28 + twinkle * 0.68;
+                    part.rotation.x = time * 0.45 + phase * 0.2;
+                    part.rotation.y = time * 0.7 + phase * 0.3;
+                });
+            }
+
             water.material.uniforms['time'].value += 0.2 * deltaSeconds; 
             
             if (bioluminescence) {
