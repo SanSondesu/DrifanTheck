@@ -162,6 +162,21 @@
                     }
                     changed = true;
                 }
+                if (!floaterDiscovery[cleanName]) {
+                    floaterDiscovery[cleanName] = { count: 1, firstAt: null, lastAt: null };
+                    changed = true;
+                } else if (!floaterDiscovery[cleanName].count) {
+                    floaterDiscovery[cleanName].count = 1;
+                    changed = true;
+                }
+            }
+            if (Array.isArray(seaObservationEntries)) {
+                seaObservationEntries.forEach(entry => {
+                    if (entry && typeof entry.text === "string" && entry.text.includes("⭐ ")) {
+                        entry.text = entry.text.replaceAll("⭐ ", "");
+                        changed = true;
+                    }
+                });
             }
             if (changed && typeof saveProgress === "function") saveProgress();
         }
