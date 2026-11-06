@@ -56,6 +56,7 @@
             else if(itemName==="時を刻むアンティーク時計"){add("circle",{cx:90,cy:35,r:24,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:19});p("M90 35 L90 20 M90 35 L103 42 M90 7 L90 11 M90 59 L90 63 M62 35 L66 35 M114 35 L118 35 M78 8 L102 8");}
             else if(itemName==="ノスタルジックな古いレコード盤"){add("circle",{cx:90,cy:35,r:27,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:20});add("circle",{cx:90,cy:35,r:13});add("circle",{cx:90,cy:35,r:5});p("M116 16 Q132 8 143 18");}
             else if(itemName==="波間を漂うガラスの浮き玉"){add("circle",{cx:90,cy:34,r:25,class:"sketch-fill"});p("M74 20 Q90 30 106 20 M72 44 Q90 34 108 45 M90 9 L90 59 M65 34 L115 34 M30 60 Q55 55 75 60 T130 60");}
+            else if(itemName==="星屑を宿したガラスの浮き玉"){add("circle",{cx:90,cy:34,r:25,class:"sketch-fill"});add("circle",{cx:90,cy:34,r:30});p("M90 5 L90 63 M61 34 L119 34 M70 14 L110 54 M110 14 L70 54 M90 21 L94 31 L105 34 L94 38 L90 48 L86 38 L75 34 L86 31 Z");}
             else{p("M48 17 L132 17 L132 54 L48 54 Z M48 17 L90 7 L132 17 M58 54 L58 61 L122 61 L122 54 M90 20 L90 49 M82 31 Q90 25 98 31 M80 36 Q90 43 100 36");}
             return svg;
         }
