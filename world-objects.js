@@ -383,7 +383,7 @@
                         
                         float intensity = max(dot(normal, viewDir), 0.0);
                         intensity = pow(intensity, 2.5);
-                        vec3 color = vec3(1.0, 0.45, 0.05);
+                        vec3 color = vec3(1.0, 0.62, 0.30);
                         gl_FragColor = vec4(color, intensity * 0.3 * glowOpacity);
                     }
                 `,
@@ -405,7 +405,7 @@
                 color: 0xffffff, transparent: true, opacity: 0.15,
                 roughness: 0.02, metalness: 0.9, side: THREE.DoubleSide
             });
-            const lanternCandleMat = new THREE.MeshBasicMaterial({ color: 0xffb766 });
+            const lanternCandleMat = new THREE.MeshBasicMaterial({ color: 0xffd09a });
             const lanternBaseGeo = new THREE.BoxGeometry(0.6, 0.08, 0.6);
             const lanternGlassGeo = new THREE.BoxGeometry(0.52, 0.72, 0.52);
             const lanternPillarGeo = new THREE.BoxGeometry(0.04, 0.7, 0.04);
@@ -468,7 +468,7 @@
                 candle.position.y = 0.25;
                 lanternGroup.add(candle);
 
-                const pLight = new THREE.PointLight(0xff7700, 0.5, 12.0);
+                const pLight = new THREE.PointLight(0xffc58f, 0.5, 12.0);
                 pLight.position.y = 0.4;
                 pLight.name = "pLight";
                 lanternGroup.add(pLight);
@@ -627,9 +627,11 @@
                     recordGroup.add(ringMesh);
                 }
 
+                const isRareRecord = i === rareRecordIndex;
                 const labelColors = [0x8b0000, 0xdaa520, 0x2f4f4f, 0x696969];
                 const labelMat = new THREE.MeshStandardMaterial({
-                    color: labelColors[i % labelColors.length], roughness: 0.9, metalness: 0.0
+                    color: isRareRecord ? (Math.random() < 0.5 ? 0xd9c18e : 0xf0e2c5) : labelColors[i % labelColors.length],
+                    roughness: 0.9, metalness: isRareRecord ? 0.18 : 0.0
                 });
                 const labelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.025, 32);
                 const label = new THREE.Mesh(labelGeo, labelMat);
@@ -640,11 +642,20 @@
                 const hole = new THREE.Mesh(holeGeo, holeMat);
                 recordGroup.add(hole);
 
-                const isRareRecord = i === rareRecordIndex;
                 if (isRareRecord) {
-                    const moonMat = new THREE.MeshStandardMaterial({ color: 0xd9e5ef, metalness: 0.72, roughness: 0.22, emissive: 0x25394d, emissiveIntensity: 0.18 });
-                    const moon = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 8, 32, Math.PI * 1.55), moonMat);
-                    moon.rotation.x = Math.PI / 2; moon.position.set(0.02, 0.025, 0.015); moon.name = "moon-glint"; recordGroup.add(moon);
+                    // 途切れた輪ではなく、輪郭が自然な三日月形の薄い銀色プレート
+                    const moonShape = new THREE.Shape();
+                    moonShape.moveTo(0.105, 0.12);
+                    moonShape.bezierCurveTo(-0.015, 0.17, -0.145, 0.075, -0.145, -0.045);
+                    moonShape.bezierCurveTo(-0.145, -0.16, -0.035, -0.205, 0.075, -0.15);
+                    moonShape.bezierCurveTo(-0.005, -0.145, -0.055, -0.075, -0.045, -0.005);
+                    moonShape.bezierCurveTo(-0.035, 0.065, 0.025, 0.105, 0.105, 0.12);
+                    const moon = new THREE.Mesh(new THREE.ShapeGeometry(moonShape, 24),
+                        new THREE.MeshStandardMaterial({ color: 0xdce3e8, metalness: 0.42, roughness: 0.38, side: THREE.DoubleSide }));
+                    moon.rotation.x = -Math.PI / 2;
+                    moon.position.set(0.02, 0.028, 0.015);
+                    moon.name = "moon-glint";
+                    recordGroup.add(moon);
                     const glintMat = new THREE.MeshBasicMaterial({ color: 0xe7f4ff, transparent: true, opacity: 0.65, depthWrite: false });
                     for (let n = 0; n < 3; n++) { const glint = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 0), glintMat.clone()); glint.position.set(-0.25 + n * 0.24, 0.035, 0.12 + (n % 2) * 0.12); glint.name = "moon-glint-sparkle"; glint.userData.sparklePhase = n * 2.1 + Math.random(); recordGroup.add(glint); }
                 }
@@ -755,12 +766,36 @@
                 const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
                 const isRareBoat = i === rareBoatIndex;
                 if (isRareBoat) {
-                    const sailStarMat = new THREE.MeshBasicMaterial({ color: 0xf2dfad, transparent: true, opacity: 0.82, depthWrite: false });
-                    const sailStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), sailStarMat);
-                    sailStar.position.set(0.02, 0.82, 0.035); sailStar.name = "sail-constellation"; sailStar.userData.sparklePhase = Math.random() * 6;
+                    const sailStarMat = new THREE.MeshBasicMaterial({ color: 0xf2dfad, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide });
+                    const starShape = new THREE.Shape();
+                    for (let p = 0; p < 10; p++) {
+                        const angle = Math.PI / 2 + p * Math.PI / 5;
+                        const radius = p % 2 === 0 ? 0.105 : 0.047;
+                        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+                        if (p === 0) starShape.moveTo(x, y); else starShape.lineTo(x, y);
+                    }
+                    starShape.closePath();
+                    const sailStar = new THREE.Mesh(new THREE.ShapeGeometry(starShape), sailStarMat);
+                    sailStar.position.set(0.16, 0.92, 0.055);
+                    sailStar.name = "sail-constellation";
+                    sailStar.userData.sparklePhase = Math.random() * 6;
                     boat.add(sailStar);
-                    const sternCharm = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 6, 20), new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.7, roughness: 0.28 }));
-                    sternCharm.position.set(0, 0.18, -0.55); sternCharm.name = "stern-star-charm"; boat.add(sternCharm);
+
+                    // 船尾板の中央・外側面に密着させた、小さな五芒星の真鍮飾り
+                    const sternStarShape = new THREE.Shape();
+                    for (let p = 0; p < 10; p++) {
+                        const angle = Math.PI / 2 + p * Math.PI / 5;
+                        const radius = p % 2 === 0 ? 0.09 : 0.04;
+                        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+                        if (p === 0) sternStarShape.moveTo(x, y); else sternStarShape.lineTo(x, y);
+                    }
+                    sternStarShape.closePath();
+                    const sternCharm = new THREE.Mesh(new THREE.ShapeGeometry(sternStarShape),
+                        new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.62, roughness: 0.36, side: THREE.DoubleSide }));
+                    sternCharm.rotation.y = Math.PI / 2;
+                    sternCharm.position.set(-1.245, 0.16, 0);
+                    sternCharm.name = "stern-star-charm";
+                    boat.add(sternCharm);
                 }
                 boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
                 if (isRareBoat) boat.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
