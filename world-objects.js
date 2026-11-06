@@ -492,7 +492,7 @@
                 if (isRareLantern) {
                     // レア個体は視界に入りやすい中央寄りへ配置する（モデル形状は変更しない）。
                     lanternGroup.position.set((Math.random() - 0.5) * 42, 0, -10 - Math.random() * 24);
-                    const fireflyMat = new THREE.MeshBasicMaterial({ color: 0xffe6a6, transparent: true, opacity: 0.7, depthWrite: false });
+                    const fireflyMat = new THREE.MeshBasicMaterial({ color: 0xffefcf, transparent: true, opacity: 0.72, depthWrite: false });
                     for (let n = 0; n < 5; n++) {
                         const mote = new THREE.Mesh(new THREE.SphereGeometry(0.018 + Math.random() * 0.012, 8, 8), fireflyMat.clone());
                         const angle = n / 5 * Math.PI * 2;
@@ -770,30 +770,29 @@
                     const starShape = new THREE.Shape();
                     for (let p = 0; p < 10; p++) {
                         const angle = Math.PI / 2 + p * Math.PI / 5;
-                        const radius = p % 2 === 0 ? 0.105 : 0.047;
+                        const radius = p % 2 === 0 ? 0.14 : 0.062;
                         const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
                         if (p === 0) starShape.moveTo(x, y); else starShape.lineTo(x, y);
                     }
                     starShape.closePath();
                     const sailStar = new THREE.Mesh(new THREE.ShapeGeometry(starShape), sailStarMat);
-                    sailStar.position.set(0.16, 0.92, 0.055);
+                    sailStar.position.set(0.16, 0.92, 0.058);
                     sailStar.name = "sail-constellation";
                     sailStar.userData.sparklePhase = Math.random() * 6;
                     boat.add(sailStar);
 
-                    // 船尾板の中央・外側面に密着させた、小さな五芒星の真鍮飾り
+                    // 船尾の中央に取り付けた、小さな五芒星の真鍮飾り
                     const sternStarShape = new THREE.Shape();
                     for (let p = 0; p < 10; p++) {
                         const angle = Math.PI / 2 + p * Math.PI / 5;
-                        const radius = p % 2 === 0 ? 0.09 : 0.04;
+                        const radius = p % 2 === 0 ? 0.085 : 0.038;
                         const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
                         if (p === 0) sternStarShape.moveTo(x, y); else sternStarShape.lineTo(x, y);
                     }
                     sternStarShape.closePath();
                     const sternCharm = new THREE.Mesh(new THREE.ShapeGeometry(sternStarShape),
                         new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.62, roughness: 0.36, side: THREE.DoubleSide }));
-                    sternCharm.rotation.y = Math.PI / 2;
-                    sternCharm.position.set(-1.245, 0.16, 0);
+                    sternCharm.position.set(0, 0.17, -0.56);
                     sternCharm.name = "stern-star-charm";
                     boat.add(sternCharm);
                 }
