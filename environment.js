@@ -748,8 +748,12 @@
 
                     f.userData.rotSpeed += (f.userData.baseRotSpeed - f.userData.rotSpeed) * (1 - Math.pow(0.95, frameScale));
 
-                    f.userData.vx += (f.userData.baseSpeedX + forceX - f.userData.vx) * (1 - Math.pow(0.94, frameScale));
-                    f.userData.vz += (f.userData.baseSpeedZ + forceZ - f.userData.vz) * (1 - Math.pow(0.94, frameScale));
+                    const wind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {x:0,z:0,strength:0};
+                    const windFactor = f.userData.isBottle && f.userData.isSinking ? 0.12 : (f.userData.isBoat ? 0.72 : 0.42);
+                    const targetVx = f.userData.baseSpeedX + forceX + wind.x * windFactor;
+                    const targetVz = f.userData.baseSpeedZ + forceZ + wind.z * windFactor;
+                    f.userData.vx += (targetVx - f.userData.vx) * (1 - Math.pow(0.94, frameScale));
+                    f.userData.vz += (targetVz - f.userData.vz) * (1 - Math.pow(0.94, frameScale));
                     f.position.x += f.userData.vx * frameScale;
                     f.position.z += f.userData.vz * frameScale;
                     
@@ -799,7 +803,7 @@
                             if (string) string.visible = true;
                         }
                     } else {
-                        f.position.y = -0.05 + Math.sin(time * 1.6 + f.userData.phase) * f.userData.bobHeight;
+                        f.position.y = -0.05 + Math.sin(time * 1.6 + f.userData.phase) * f.userData.bobHeight + Math.sin(f.position.x*.035+f.position.z*.022+time*.72)*.018;
                         f.rotation.x = Math.sin(time * 1.4 + f.userData.phase) * 0.12;
                         f.rotation.z = Math.cos(time * 1.8 + f.userData.phase) * 0.08;
                         f.rotation.y += f.userData.rotSpeed * frameScale;
@@ -834,12 +838,12 @@
                         }
                     }
 
-                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight;
+                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + Math.sin(f.position.x*.035+f.position.z*.022+time*.72)*.018;
                     f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
                     f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
                     f.rotation.y += f.userData.rotSpeed * frameScale;
                 } else if (f.userData.isBoat) {
-                    f.position.y = Math.sin(time * 1.5 + f.userData.phase) * f.userData.bobHeight;
+                    f.position.y = Math.sin(time * 1.5 + f.userData.phase) * f.userData.bobHeight + Math.sin(f.position.x*.035+f.position.z*.022+time*.72)*.022;
                     f.rotation.x = Math.sin(time * 1.1 + f.userData.phase) * 0.055;
                     f.rotation.z = Math.cos(time * 1.3 + f.userData.phase) * 0.045;
                     f.rotation.y += f.userData.rotSpeed * frameScale;
