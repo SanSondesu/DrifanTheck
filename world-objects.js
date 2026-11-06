@@ -416,6 +416,7 @@
             const lanternRingGeo = new THREE.TorusGeometry(0.15, 0.015, 8, 16);
             const lanternCandleGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.35, 16);
 
+            const rareLanternIndex = Math.random() < 0.28 ? Math.floor(Math.random() * lanternCount) : -1;
             for(let i=0; i<lanternCount; i++) {
                 const lanternGroup = new THREE.Group();
 
@@ -487,6 +488,22 @@
                 lanternGroup.position.x = (Math.random() - 0.5) * 300;
                 lanternGroup.position.z = (Math.random() - 0.5) * 200 - 20;
                 lanternGroup.position.y = 0;
+                const isRareLantern = i === rareLanternIndex;
+                if (isRareLantern) {
+                    const fireflyMat = new THREE.MeshBasicMaterial({ color: 0xffe6a6, transparent: true, opacity: 0.7, depthWrite: false });
+                    for (let n = 0; n < 5; n++) {
+                        const mote = new THREE.Mesh(new THREE.SphereGeometry(0.018 + Math.random() * 0.012, 8, 8), fireflyMat.clone());
+                        const angle = n / 5 * Math.PI * 2;
+                        mote.position.set(Math.cos(angle) * 0.48, 0.25 + Math.sin(n * 2.4) * 0.28, Math.sin(angle) * 0.48);
+                        mote.name = "firefly-mote";
+                        mote.userData.sparklePhase = n * 1.7 + Math.random();
+                        lanternGroup.add(mote);
+                    }
+                    const crescent = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 24, Math.PI * 1.35), new THREE.MeshStandardMaterial({ color: 0xd9c99b, metalness: 0.65, roughness: 0.3, emissive: 0x493d20, emissiveIntensity: 0.12 }));
+                    crescent.position.set(0, 1.58, 0);
+                    crescent.name = "firefly-crescent";
+                    lanternGroup.add(crescent);
+                }
                 lanternGroup.userData = {
                     baseSpeedX: -0.01 + (Math.random() - 0.5) * 0.005,
                     baseSpeedZ: 0.015 + (Math.random() - 0.5) * 0.01,
@@ -498,7 +515,8 @@
                     bobHeight: 0.03 + Math.random() * 0.02,
                     isBottle: false,
                     isLantern: true,
-                    isNightExtra: isNightExtra
+                    isNightExtra: isNightExtra,
+                    isRareLantern: isRareLantern
                 };
                 scene.add(lanternGroup);
                 floaters.push(lanternGroup);
@@ -585,6 +603,7 @@
                 floaters.push(watchGroup);
             }
 
+            const rareRecordIndex = Math.random() < 0.28 ? Math.floor(Math.random() * recordCount) : -1;
             for(let i = 0; i < recordCount; i++) {
                 const recordGroup = new THREE.Group();
                 
@@ -619,6 +638,14 @@
                 const hole = new THREE.Mesh(holeGeo, holeMat);
                 recordGroup.add(hole);
 
+                const isRareRecord = i === rareRecordIndex;
+                if (isRareRecord) {
+                    const moonMat = new THREE.MeshStandardMaterial({ color: 0xd9e5ef, metalness: 0.72, roughness: 0.22, emissive: 0x25394d, emissiveIntensity: 0.18 });
+                    const moon = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 8, 32, Math.PI * 1.55), moonMat);
+                    moon.rotation.x = Math.PI / 2; moon.position.set(0.02, 0.025, 0.015); moon.name = "moon-glint"; recordGroup.add(moon);
+                    const glintMat = new THREE.MeshBasicMaterial({ color: 0xe7f4ff, transparent: true, opacity: 0.65, depthWrite: false });
+                    for (let n = 0; n < 3; n++) { const glint = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 0), glintMat.clone()); glint.position.set(-0.25 + n * 0.24, 0.035, 0.12 + (n % 2) * 0.12); glint.name = "moon-glint-sparkle"; glint.userData.sparklePhase = n * 2.1 + Math.random(); recordGroup.add(glint); }
+                }
                 recordGroup.scale.set(2.0, 2.0, 2.0);
                 recordGroup.position.x = (Math.random() - 0.5) * 300;
                 recordGroup.position.z = (Math.random() - 0.5) * 200 - 20;
@@ -633,7 +660,8 @@
                     phase: Math.random() * Math.PI * 2,
                     bobHeight: 0.02 + Math.random() * 0.02,
                     isBottle: false,
-                    isRecord: true
+                    isRecord: true,
+                    isRareRecord: isRareRecord
                 };
                 scene.add(recordGroup);
                 floaters.push(recordGroup);
@@ -718,8 +746,18 @@
             }
 
             // 小さな木製の船：素朴な帆船を少数だけ漂わせる
+            const rareBoatIndex = Math.random() < 0.24 ? Math.floor(Math.random() * boatCount) : -1;
             for (let i = 0; i < boatCount; i++) {
                 const boat = createBoatModel(1.12, Math.floor(Math.random() * 5));
+                const isRareBoat = i === rareBoatIndex;
+                if (isRareBoat) {
+                    const sailStarMat = new THREE.MeshBasicMaterial({ color: 0xf2dfad, transparent: true, opacity: 0.82, depthWrite: false });
+                    const sailStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), sailStarMat);
+                    sailStar.position.set(0.02, 0.82, 0.035); sailStar.name = "sail-constellation"; sailStar.userData.sparklePhase = Math.random() * 6;
+                    boat.add(sailStar);
+                    const sternCharm = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 6, 20), new THREE.MeshStandardMaterial({ color: 0xd9bd83, metalness: 0.7, roughness: 0.28 }));
+                    sternCharm.position.set(0, 0.18, -0.55); sternCharm.name = "stern-star-charm"; boat.add(sternCharm);
+                }
                 boat.position.set((Math.random() - 0.5) * 300, 0, (Math.random() - 0.5) * 200 - 20);
                 boat.rotation.y = Math.random() * Math.PI * 2;
                 boat.userData = {
@@ -731,7 +769,8 @@
                     phase: Math.random() * Math.PI * 2,
                     bobHeight: 0.035 + Math.random() * 0.02,
                     isBottle: false,
-                    isBoat: true
+                    isBoat: true,
+                    isRareBoat: isRareBoat
                 };
                 scene.add(boat);
                 floaters.push(boat);
