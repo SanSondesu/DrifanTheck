@@ -142,7 +142,7 @@
         }
 
         function normalizeRareNotebookNames() {
-            const normalize = name => String(name || "").replace(/^⭐️?\\s*/, "");
+            const normalize = name => String(name || "").replace(/^⭐️?\s*/, "");
             const names = Array.from(touchedItemsSet);
             let changed = false;
             for (const oldName of names) {
