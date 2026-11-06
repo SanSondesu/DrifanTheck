@@ -640,22 +640,67 @@
         }
 
         function createPreviewBottle() {
+            // 実際に海を漂うボトルと同じ形状・材質・パーツ配置を使用する
             const group = new THREE.Group();
-            const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.25, 20),
-                new THREE.MeshPhysicalMaterial({ color: 0x9bc4c8, transmission: 0.72, transparent: true, opacity: 0.55, roughness: 0.12 }));
-            glass.rotation.z = Math.PI / 2;
-            group.add(glass);
-            const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.28, 12),
-                new THREE.MeshStandardMaterial({ color: 0x9a6841, roughness: 0.9 }));
-            cork.rotation.z = Math.PI / 2;
-            cork.position.x = 0.73;
-            group.add(cork);
-            const letter = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.42, 12),
-                new THREE.MeshStandardMaterial({ color: 0xf2e3c6, roughness: 0.8 }));
-            letter.rotation.z = -Math.PI / 2;
-            letter.position.x = -0.02;
-            group.add(letter);
-            group.scale.setScalar(2.0);
+
+            const bottlePoints = [
+                new THREE.Vector2(0.00, 0.00),
+                new THREE.Vector2(0.12, 0.02),
+                new THREE.Vector2(0.15, 0.08),
+                new THREE.Vector2(0.15, 0.55),
+                new THREE.Vector2(0.14, 0.65),
+                new THREE.Vector2(0.09, 0.75),
+                new THREE.Vector2(0.06, 0.85),
+                new THREE.Vector2(0.06, 1.10),
+                new THREE.Vector2(0.075, 1.13),
+                new THREE.Vector2(0.075, 1.17),
+                new THREE.Vector2(0.055, 1.18)
+            ];
+
+            const bottleGeo = new THREE.LatheGeometry(bottlePoints, 24);
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0x8c5e35,
+                transmission: 0.9,
+                opacity: 0.95,
+                transparent: true,
+                roughness: 0.05,
+                metalness: 0.0,
+                ior: 1.52,
+                thickness: 0.25,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.08
+            });
+            const bottleMesh = new THREE.Mesh(bottleGeo, glassMat);
+            group.add(bottleMesh);
+
+            const corkMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.054, 0.048, 0.16, 16),
+                new THREE.MeshStandardMaterial({ color: 0x8c5933, roughness: 0.92 })
+            );
+            corkMesh.rotation.z = -Math.PI / 2;
+            corkMesh.position.set(1.16, 0, 0);
+            group.add(corkMesh);
+
+            const letterMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.052, 0.052, 0.46, 16),
+                new THREE.MeshStandardMaterial({ color: 0xf2e3c6, roughness: 0.75 })
+            );
+            letterMesh.rotation.z = -Math.PI / 2;
+            letterMesh.position.set(0.32, -0.01, 0);
+            group.add(letterMesh);
+
+            const stringMesh = new THREE.Mesh(
+                new THREE.TorusGeometry(0.054, 0.009, 8, 16),
+                new THREE.MeshStandardMaterial({ color: 0xa8201a, roughness: 0.6 })
+            );
+            stringMesh.rotation.y = Math.PI / 2;
+            stringMesh.position.set(0.32, -0.01, 0);
+            group.add(stringMesh);
+
+            bottleMesh.rotation.z = -Math.PI / 2;
+            group.scale.set(3.5, 3.5, 3.5);
+            // 実物と同じ横向きのまま、閲覧枠の中央に配置
+            group.position.set(-2.065, -0.05, 0);
             return group;
         }
 
