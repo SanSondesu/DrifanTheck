@@ -241,19 +241,19 @@
             previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
             previewCamera.position.z = 6;
 
-            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambient = new THREE.AmbientLight(0xffffff, 0.62);
             previewScene.add(ambient);
             
-            // レコードの溝や時計の金属が綺麗に反射するようにライトを調整
-            const dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+            // 飾りの色や金属感が白飛びしないよう、柔らかな明るさに抑える
+            const dirLight = new THREE.DirectionalLight(0xffeedd, 1.05);
             dirLight.position.set(5, 10, 7); 
             previewScene.add(dirLight);
             
-            const pointLight = new THREE.PointLight(0xffffff, 1.2, 20); // 反射・ハイライト用
+            const pointLight = new THREE.PointLight(0xffffff, 0.72, 20);
             pointLight.position.set(0, 5, 2);
             previewScene.add(pointLight);
 
-            const fillLight = new THREE.DirectionalLight(0x88bbff, 0.8);
+            const fillLight = new THREE.DirectionalLight(0x88bbff, 0.48);
             fillLight.position.set(-5, 2, -5);
             previewScene.add(fillLight);
 
@@ -268,8 +268,15 @@
                 if(!previewIsDragging || !previewModel) return;
                 const dx = e.clientX - previewPrevMouse.x;
                 const dy = e.clientY - previewPrevMouse.y;
-                previewModel.rotation.y += dx * 0.015;
-                previewModel.rotation.x += dy * 0.015;
+                const isRecordPreview = previewModel.userData && previewModel.userData.previewKind === 'record';
+                if (isRecordPreview) {
+                    // レコードは水平スワイプで盤面を横から見られるように傾ける
+                    previewModel.rotation.x += dx * 0.015;
+                    previewModel.rotation.y += dy * 0.015;
+                } else {
+                    previewModel.rotation.y += dx * 0.015;
+                    previewModel.rotation.x += dy * 0.015;
+                }
                 previewPrevMouse.x = e.clientX;
                 previewPrevMouse.y = e.clientY;
             });
@@ -404,7 +411,28 @@
             hHand.position.set(0, 0.065, 0); hHand.rotation.y = 1.5; group.add(hHand);
             const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.005, 0.18).translate(0, 0, 0.08), handsMat);
             mHand.position.set(0, 0.07, 0); mHand.rotation.y = 0.5; group.add(mHand);
-            
+
+            if (isRare) {
+                // 時針と分針の始点に、小さな真鍮色の五芒星を添える
+                const starShape = new THREE.Shape();
+                for (let i = 0; i < 10; i++) {
+                    const angle = Math.PI / 2 + i * Math.PI / 5;
+                    const radius = i % 2 === 0 ? 0.052 : 0.024;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+                    if (i === 0) starShape.moveTo(x, z);
+                    else starShape.lineTo(x, z);
+                }
+                starShape.closePath();
+                const star = new THREE.Mesh(
+                    new THREE.ShapeGeometry(starShape),
+                    new THREE.MeshStandardMaterial({ color: 0xc5a45d, metalness: 0.62, roughness: 0.34, side: THREE.DoubleSide })
+                );
+                star.rotation.x = -Math.PI / 2;
+                star.position.set(0, 0.078, 0);
+                group.add(star);
+            }
+
             const glass = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.1 }));
             glass.position.y = 0.05; glass.scale.y = 0.3; group.add(glass);
             
@@ -464,6 +492,7 @@
             }
             group.scale.set(3, 3, 3);
             group.rotation.x = Math.PI / 3;
+            group.userData.previewKind = 'record';
             return group;
         }
 
