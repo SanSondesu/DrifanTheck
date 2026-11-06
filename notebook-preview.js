@@ -1,4 +1,17 @@
 /* notebook-preview.js: feature functions using shared app.js state. */
+        FLOATER_DESCRIPTIONS["蛍火をまとったランタン"] = {
+            lines: ["どこから流れてきたかわからない、蛍火をまとったランタン。","その周りには、小さな光の粒が静かに集まっている。","まるで夜の海を渡る蛍たちが、帰る場所を見つけたようだ。"],
+            echoes: ["光の粒は、風に押されるようにゆっくりと漂う。","灯りのそばには、夜空の欠片が集まるのかもしれない。","ひとつ消えると、また別の光がそっと現れる。","この灯りを目印に、誰かが帰ってくるのだろうか。"]
+        };
+        FLOATER_DESCRIPTIONS["月光を映すレコード"] = {
+            lines: ["どこから流れてきたかわからない、月光を映すレコード。","盤面には、夜の海のような青白い光が静かに走る。","溝の奥には、月の見えた夜の旋律が眠っているようだ。"],
+            echoes: ["回転するたび、銀色の光が細く弧を描く。","この盤を聴いていた部屋にも、月明かりは届いただろうか。","音のない海に、遠い旋律だけが残っている。","中心の小さな月は、夜ごと違う表情を見せる。"]
+        };
+        FLOATER_DESCRIPTIONS["星航りの小舟"] = {
+            lines: ["どこから流れてきかわからない、星航りの小舟。","帆には小さな星座が縫い込まれ、船尾には真鍮の星飾りがある。","行き先を決めるのは、帆を揺らす風と、遠い星なのかもしれない。"],
+            echoes: ["星の刺繍は、暗い海でもかすかに浮かび上がる。","この小舟は、水平線の向こうに何を見つけるのだろう。","風が変わるたび、星座も違う方角を指しているようだ。","小さな船にも、広い夜空を渡る夢がある。"]
+        };
+
         FLOATER_DESCRIPTIONS["星屑を宿したガラスの浮き玉"] = {
             lines: [
                 "どこから流れてきたかわからない、星屑を宿したガラスの浮き玉。",
@@ -16,11 +29,14 @@
         function getFloaterItemName(group) {
             const d = group.userData || {};
             if (d.isBottle) return "手紙の入った古いボトル";
+            if (d.isRareLantern) return "蛍火をまとったランタン";
             if (d.isLantern) return "海を漂う古いランタン";
             if (d.isWatch) return "時を刻むアンティーク時計";
+            if (d.isRareRecord) return "月光を映すレコード";
             if (d.isRecord) return "ノスタルジックな古いレコード盤";
             if (d.isRareGlassBall) return "星屑を宿したガラスの浮き玉";
             if (d.isGlassBall) return "波間を漂うガラスの浮き玉";
+            if (d.isRareBoat) return "星航りの小舟";
             if (d.isBoat) return "小さな木製の船";
             return "波間を漂う古い流木";
         }
@@ -38,7 +54,7 @@
             floaterDiscovery[itemName].lastAt = discoveredAt;
             if (!floaterDiscovery[itemName].firstAt) floaterDiscovery[itemName].firstAt = discoveredAt;
             if (window.DrifanEnhancements) {
-                DrifanEnhancements.recordObservation(group.userData.isRareGlassBall ? 'rare' : 'discovery', itemName);
+                DrifanEnhancements.recordObservation((group.userData.isRareGlassBall || group.userData.isRareLantern || group.userData.isRareRecord || group.userData.isRareBoat) ? 'rare' : 'discovery', itemName);
             }
             saveProgress();
             updateNotebookUI(itemName);
@@ -56,6 +72,9 @@
             else if(itemName==="時を刻むアンティーク時計"){add("circle",{cx:90,cy:35,r:24,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:19});p("M90 35 L90 20 M90 35 L103 42 M90 7 L90 11 M90 59 L90 63 M62 35 L66 35 M114 35 L118 35 M78 8 L102 8");}
             else if(itemName==="ノスタルジックな古いレコード盤"){add("circle",{cx:90,cy:35,r:27,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:20});add("circle",{cx:90,cy:35,r:13});add("circle",{cx:90,cy:35,r:5});p("M116 16 Q132 8 143 18");}
             else if(itemName==="波間を漂うガラスの浮き玉"){add("circle",{cx:90,cy:34,r:25,class:"sketch-fill"});p("M74 20 Q90 30 106 20 M72 44 Q90 34 108 45 M90 9 L90 59 M65 34 L115 34 M30 60 Q55 55 75 60 T130 60");}
+            else if(itemName==="蛍火をまとったランタン"){p("M68 19 L112 19 L108 51 L72 51 Z M75 19 L80 9 L100 9 L105 19 M90 9 L90 4 M90 27 Q78 38 90 45 Q102 38 90 27");add("circle",{cx:48,cy:24,r:3});add("circle",{cx:132,cy:35,r:2});add("circle",{cx:120,cy:12,r:2});}
+            else if(itemName==="月光を映すレコード"){add("circle",{cx:90,cy:35,r:27,class:"sketch-fill"});add("circle",{cx:90,cy:35,r:20});add("circle",{cx:90,cy:35,r:13});p("M90 25 Q79 36 90 45 Q101 36 90 25 M112 12 L118 18 L112 24");}
+            else if(itemName==="星航りの小舟"){p("M35 43 Q82 52 139 42 L126 56 Q83 62 48 55 Z M83 43 L83 8 M84 12 L116 38 L84 38 Z M78 13 L51 35 L78 35 Z M92 20 L96 29 L106 30 L98 36 L100 45 L92 40 L84 45 L86 36 L78 30 L88 29 Z");}
             else if(itemName==="星屑を宿したガラスの浮き玉"){add("circle",{cx:90,cy:34,r:25,class:"sketch-fill"});add("circle",{cx:90,cy:34,r:30});p("M90 5 L90 63 M61 34 L119 34 M70 14 L110 54 M110 14 L70 54 M90 21 L94 31 L105 34 L94 38 L90 48 L86 38 L75 34 L86 31 Z");}
             else{p("M48 17 L132 17 L132 54 L48 54 Z M48 17 L90 7 L132 17 M58 54 L58 61 L122 61 L122 54 M90 20 L90 49 M82 31 Q90 25 98 31 M80 36 Q90 43 100 36");}
             return svg;
