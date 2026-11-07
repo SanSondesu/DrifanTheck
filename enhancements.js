@@ -83,9 +83,9 @@ function individualize(){
   obj.scale.multiplyScalar(ud.appearanceScale);
   ud.bobHeight=(ud.bobHeight||.03)*(.92+seed*.16);
   ud.wavePhase=seed*Math.PI*2;
-  ud.waveSpeed=.72+seed*.28;
-  ud.waveAmplitude=.008+seed*.014;
-  ud.waveTilt=.006+seed*.008;
+  ud.waveSpeed=.9+seed*.42;
+  ud.waveAmplitude=.018+seed*.022;
+  ud.waveTilt=.012+seed*.014;
   ud.waveLastOffset=0;
   ud.appearanceNote=seed>.82?'潮に磨かれた跡':seed<.12?'淡い色むら':'';
   const clones=new Map();
@@ -118,7 +118,7 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
  const dawn=smooth(.16,.24,progress)*(1-smooth(.30,.38,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
  const dusk=smooth(.68,.76,progress)*(1-smooth(.82,.90,progress));
  if(water.material.uniforms&&water.material.uniforms.distortionScale){
-  water.material.uniforms.distortionScale.value=1.58+twilight*.12+nightRatio*.04;
+  water.material.uniforms.distortionScale.value=2.35+twilight*.18+nightRatio*.12;
  }
  if(scene.fog&&scene.fog.isFogExp2){
   const mistColor=new THREE.Color(0x9fb6c5)
@@ -130,12 +130,12 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
 }
 function updateFrame(now,nightRatio){
  const t=now*.001;
- const targetStrength=.008+.012*(.5+.5*Math.sin(t*.035+wind.phase))+.006*(.5+.5*Math.sin(t*.013+wind.phase*1.7));
+ const targetStrength=.016+.018*(.5+.5*Math.sin(t*.035+wind.phase))+.010*(.5+.5*Math.sin(t*.013+wind.phase*1.7));
  wind.strength+=(targetStrength-wind.strength)*.012;
  const direction=t*.018+Math.sin(t*.009+wind.phase)*.22;
  wind.x=Math.cos(direction)*wind.strength;
  wind.z=Math.sin(direction)*wind.strength;
- lastWindLabel=wind.strength<.014?'そよ風':wind.strength<.021?'やわらかな風':'少し強い風';
+ lastWindLabel=wind.strength<.024?'そよ風':wind.strength<.034?'やわらかな風':'強めの風';
  reflections.forEach(({lantern,plane,phase})=>{
   if(!lantern.parent)return;
   plane.position.x=lantern.position.x+Math.sin(t*.45+phase)*.7;
