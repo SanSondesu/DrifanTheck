@@ -69,6 +69,7 @@
             if (tappedGroup) {
                 const group = tappedGroup;
                     recordFloaterDiscovery(group);
+                    if (window.DrifanEnhancements) DrifanEnhancements.playDiscoveryEffect(group);
                     const distanceGain=getFloaterAudioGain(group);
                     if (group.userData.isBottle) {
                         playSoftFloaterTap(distanceGain);
