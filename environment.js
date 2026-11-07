@@ -590,7 +590,7 @@
             } else {
                 directionalLight.position.copy(moon);
                 directionalLight.color.copy(MOONLIGHT_COLOR);
-                directionalLight.intensity = nightRatio * 0.95; 
+                directionalLight.intensity = nightRatio * 1.0; 
             }
             
             if (sunElevation > -2) {
@@ -602,24 +602,24 @@
             } else {
                 // 夜は月の方向から淡い銀青色の反射を水面へ落とす
                 water.material.uniforms['sunDirection'].value.copy(moon).normalize();
-                const moonReflection = new THREE.Color(0xbfd8ff).multiplyScalar(0.34 + nightRatio * 0.32);
+                const moonReflection = new THREE.Color(0xc9ddff).multiplyScalar(0.42 + nightRatio * 0.34);
                 water.material.uniforms['sunColor'].value.copy(moonReflection);
             }
 
             const ambientDay = new THREE.Color(0x77aaff); 
-            const ambientNight = new THREE.Color(0x283a4e); 
+            const ambientNight = new THREE.Color(0x344b62); 
             const ambientSunset = new THREE.Color(0x442211); 
             
             let clearAmbient = new THREE.Color().lerpColors(ambientNight, ambientDay, dayRatio).lerp(ambientSunset, sunsetRatio);
             ambientLight.color.copy(clearAmbient);
             
-            let baseAmbientInt = 0.35 + (dayRatio * 0.25) - (sunsetRatio * 0.3);
+            let baseAmbientInt = 0.35 + (dayRatio * 0.25) - (sunsetRatio * 0.3) + (nightRatio * 0.06);
             ambientLight.intensity = baseAmbientInt;
 
             let clearWater = new THREE.Color().lerpColors(WATER_BASE_NIGHT, WATER_BASE_DAY, dayRatio).lerp(WATER_BASE_SUNSET, sunsetRatio);
             water.material.uniforms['waterColor'].value.copy(clearWater);
 
-            let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25); 
+            let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25) + (nightRatio * 0.045); 
             renderer.toneMappingExposure = baseExp;
 
             if (scene.environment) scene.environment.dispose();
