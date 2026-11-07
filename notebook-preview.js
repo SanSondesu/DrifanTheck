@@ -767,6 +767,7 @@
             const text = document.getElementById('preview-text');
             
             if(previewModel) {
+                if (window.DrifanEnhancements) DrifanEnhancements.applySurfaceFinish(previewModel, 0.48);
                 previewScene.add(previewModel);
                 previewCamera.position.z = 6;
                 canvas.style.display = 'block';
