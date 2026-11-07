@@ -32,19 +32,24 @@ function makeSurfaceTexture(){
  const canvas=document.createElement('canvas');canvas.width=canvas.height=128;
  const ctx=canvas.getContext('2d'),image=ctx.createImageData(128,128);
  let state=0x51f15e;
- for(let i=0;i<128*128;i++){
-  state=(state*1664525+1013904223)>>>0;
-  const grain=232+(state>>>24)%24,offset=i*4;
-  image.data[offset]=grain;image.data[offset+1]=grain;image.data[offset+2]=grain;image.data[offset+3]=255;
+ for(let y=0;y<128;y++){
+  for(let x=0;x<128;x++){
+   state=(state*1664525+1013904223)>>>0;
+   const broad=((Math.sin(x*.31)+Math.cos(y*.27))*2.2);
+   const grain=Math.max(224,Math.min(255,239+(state>>>27)%12+broad));
+   const offset=(y*128+x)*4;
+   image.data[offset]=grain;image.data[offset+1]=grain;image.data[offset+2]=grain;image.data[offset+3]=255;
+  }
  }
  ctx.putImageData(image,0,0);
  surfaceTexture=new THREE.CanvasTexture(canvas);
  surfaceTexture.wrapS=surfaceTexture.wrapT=THREE.RepeatWrapping;
  surfaceTexture.repeat.set(2,2);
- surfaceTexture.anisotropy=2;
+ surfaceTexture.anisotropy=Math.min(4,renderer&&renderer.capabilities?renderer.capabilities.getMaxAnisotropy():2);
  surfaceTexture.generateMipmaps=true;
  surfaceTexture.minFilter=THREE.LinearMipmapLinearFilter;
  surfaceTexture.magFilter=THREE.LinearFilter;
+ surfaceTexture.needsUpdate=true;
  return surfaceTexture;
 }
 function finishMaterial(material,seed){
@@ -52,6 +57,8 @@ function finishMaterial(material,seed){
  if(cp.color&&cp.color.isColor)cp.color.offsetHSL((seed-.5)*.018,(seed-.5)*.035,(seed-.5)*.025);
  if((cp.isMeshStandardMaterial||cp.isMeshPhysicalMaterial)&&cp.roughness>=.42){
   if(!cp.roughnessMap)cp.roughnessMap=makeSurfaceTexture();
+  if(!cp.bumpMap)cp.bumpMap=makeSurfaceTexture();
+  cp.bumpScale=0.0035;
   cp.roughness=THREE.MathUtils.clamp(cp.roughness+(seed-.5)*.025,.35,1);
  }
  cp.needsUpdate=true;
@@ -110,11 +117,15 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
  if(!water||!scene)return;
  const dawn=smooth(.16,.24,progress)*(1-smooth(.30,.38,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
  const dusk=smooth(.68,.76,progress)*(1-smooth(.82,.90,progress));
- if(water.material.uniforms&&water.material.uniforms.distortionScale)water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
+ if(water.material.uniforms&&water.material.uniforms.distortionScale){
+  water.material.uniforms.distortionScale.value=1.58+twilight*.12+nightRatio*.04;
+ }
  if(scene.fog&&scene.fog.isFogExp2){
-  const mistColor=new THREE.Color(0x8899aa).lerp(new THREE.Color(0xa9bdc8),dawn*.20+dusk*.07+nightRatio*.035);
+  const mistColor=new THREE.Color(0x9fb6c5)
+   .lerp(new THREE.Color(0xd6ae9a),Math.min(.28,twilight*.24))
+   .lerp(new THREE.Color(0x71839e),nightRatio*.28);
   scene.fog.color.copy(mistColor);
-  scene.fog.density=.000010+dawn*.000022+dusk*.000006;
+  scene.fog.density=.00016+twilight*.00009+nightRatio*.000025;
  }
 }
 function updateFrame(now,nightRatio){
@@ -129,10 +140,45 @@ function updateFrame(now,nightRatio){
   if(!lantern.parent)return;
   plane.position.x=lantern.position.x+Math.sin(t*.45+phase)*.7;
   plane.position.z=lantern.position.z+Math.cos(t*.38+phase)*.45;
-  plane.material.opacity=nightRatio*(.035+.025*(.5+.5*Math.sin(t*1.1+phase)));
+  const tapGlow=lantern.userData&&lantern.userData.isGlowing?0.035:0;
+  plane.material.opacity=nightRatio*(.045+.03*(.5+.5*Math.sin(t*1.1+phase))+tapGlow);
   plane.rotation.z=Math.sin(t*.35+phase)*.08;
-  const pulse=1+.06*Math.sin(t*.8+phase);plane.scale.set(9*pulse,4*pulse,1);
+  const pulse=1+.075*Math.sin(t*.8+phase);plane.scale.set(9.5*pulse,4.5*pulse,1);
  });
+}
+const discoveryEffects=[];
+let discoveryGeometry=null;
+function playDiscoveryEffect(target){
+ if(!target||!scene||!THREE)return;
+ const ud=target.userData||(target.userData={});
+ if(ud.discoverySparkleShown)return;
+ ud.discoverySparkleShown=true;
+ if(!discoveryGeometry)discoveryGeometry=new THREE.OctahedronGeometry(.045,0);
+ const rare=!!(ud.isRareLantern||ud.isRareWatch||ud.isRareRecord||ud.isRareGlassBall||ud.isRareBoat);
+ const count=rare?9:6;
+ const origin=new THREE.Vector3();
+ target.getWorldPosition(origin);
+ for(let i=0;i<count;i++){
+  const angle=(i/count)*Math.PI*2+(Math.random()-.5)*.28;
+  const lift=.18+Math.random()*.34;
+  const material=new THREE.MeshBasicMaterial({
+   color:rare?(i%3===0?0xf4dfad:0xc7dfff):0xd9e9f4,
+   transparent:true,opacity:0,depthWrite:false,
+   blending:THREE.AdditiveBlending
+  });
+  const mesh=new THREE.Mesh(discoveryGeometry,material);
+  const radius=.28+Math.random()*.34;
+  mesh.position.set(origin.x+Math.cos(angle)*radius,origin.y+lift,origin.z+Math.sin(angle)*radius);
+  mesh.scale.setScalar(.55+Math.random()*.55);
+  scene.add(mesh);
+  discoveryEffects.push({
+   mesh,life:0,maxLife:rare?1.55:1.15,
+   vx:Math.cos(angle)*(.003+Math.random()*.004),
+   vy:.002+Math.random()*.003,
+   vz:Math.sin(angle)*(.003+Math.random()*.004),
+   phase:Math.random()*Math.PI*2
+  });
+ }
 }
 function makeObservationText(reason,itemName){
  const progress=Number.isFinite(currentProgress)?currentProgress:.5,hour=Math.floor(progress*24);
@@ -177,5 +223,27 @@ function renderLore(itemName){
  if(instance&&instance.userData.appearanceNote){const detail=document.createElement('span');detail.style.display='block';detail.style.marginTop='6px';detail.textContent='個体の特徴：'+instance.userData.appearanceNote;note.appendChild(detail);}
  panel.appendChild(note);
 }
-g.DrifanEnhancements=Object.freeze({init,updateTime,updateFrame,recordObservation,renderJournal,renderLore,applySurfaceFinish,getWind:()=>wind,getWindLabel:()=>lastWindLabel});
+function updateDiscoveryEffects(deltaSeconds){
+ const dt=Math.min(Math.max(deltaSeconds||0,0),.05)*60;
+ for(let i=discoveryEffects.length-1;i>=0;i--){
+  const effect=discoveryEffects[i],mesh=effect.mesh;
+  effect.life+=dt/60;
+  const progress=effect.life/effect.maxLife;
+  if(progress>=1){
+   scene.remove(mesh);
+   mesh.material.dispose();
+   discoveryEffects.splice(i,1);
+   continue;
+  }
+  mesh.position.x+=effect.vx*dt;
+  mesh.position.y+=effect.vy*dt;
+  mesh.position.z+=effect.vz*dt;
+  const pulse=.72+.28*Math.sin(effect.life*8+effect.phase);
+  mesh.scale.setScalar((.42+.42*(1-progress))*pulse);
+  mesh.material.opacity=(1-progress)*(.36+.28*Math.sin(effect.life*5+effect.phase));
+  mesh.rotation.x+=.018*dt;
+  mesh.rotation.y+=.024*dt;
+ }
+}
+g.DrifanEnhancements=Object.freeze({init,updateTime,updateFrame,updateDiscoveryEffects,playDiscoveryEffect,recordObservation,renderJournal,renderLore,applySurfaceFinish,getWind:()=>wind,getWindLabel:()=>lastWindLabel});
 })(window);
