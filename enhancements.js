@@ -26,22 +26,66 @@ function makeTexture(){
  grad.addColorStop(0,'rgba(255,207,139,0.42)');grad.addColorStop(.28,'rgba(255,183,115,0.20)');grad.addColorStop(1,'rgba(255,160,90,0)');
  x.fillStyle=grad;x.fillRect(0,0,128,64);return new THREE.CanvasTexture(c);
 }
+let surfaceTexture=null;
+function makeSurfaceTexture(){
+ if(surfaceTexture)return surfaceTexture;
+ const canvas=document.createElement('canvas');canvas.width=canvas.height=128;
+ const ctx=canvas.getContext('2d'),image=ctx.createImageData(128,128);
+ let state=0x51f15e;
+ for(let i=0;i<128*128;i++){
+  state=(state*1664525+1013904223)>>>0;
+  const grain=232+(state>>>24)%24,offset=i*4;
+  image.data[offset]=grain;image.data[offset+1]=grain;image.data[offset+2]=grain;image.data[offset+3]=255;
+ }
+ ctx.putImageData(image,0,0);
+ surfaceTexture=new THREE.CanvasTexture(canvas);
+ surfaceTexture.wrapS=surfaceTexture.wrapT=THREE.RepeatWrapping;
+ surfaceTexture.repeat.set(2,2);
+ surfaceTexture.anisotropy=2;
+ surfaceTexture.generateMipmaps=true;
+ surfaceTexture.minFilter=THREE.LinearMipmapLinearFilter;
+ surfaceTexture.magFilter=THREE.LinearFilter;
+ return surfaceTexture;
+}
+function finishMaterial(material,seed){
+ const cp=material.clone();
+ if(cp.color&&cp.color.isColor)cp.color.offsetHSL((seed-.5)*.018,(seed-.5)*.035,(seed-.5)*.025);
+ if((cp.isMeshStandardMaterial||cp.isMeshPhysicalMaterial)&&cp.roughness>=.42){
+  if(!cp.roughnessMap)cp.roughnessMap=makeSurfaceTexture();
+  cp.roughness=THREE.MathUtils.clamp(cp.roughness+(seed-.5)*.025,.35,1);
+ }
+ cp.needsUpdate=true;
+ return cp;
+}
+function applySurfaceFinish(root,seed=.48){
+ if(!root||!g.THREE)return;
+ const clones=new Map();
+ root.traverse(child=>{
+  if(!child.isMesh||!child.material)return;
+  const cloneOne=m=>{
+   if(!clones.has(m.uuid))clones.set(m.uuid,finishMaterial(m,seed));
+   return clones.get(m.uuid);
+  };
+  child.material=Array.isArray(child.material)?child.material.map(cloneOne):cloneOne(child.material);
+ });
+}
 function individualize(){
  (typeof floaters!=='undefined'?floaters:[]).forEach(obj=>{
   const ud=obj.userData||(obj.userData={}),seed=Math.random();
   ud.appearanceSeed=seed;ud.appearanceScale=.975+seed*.05;
   obj.scale.multiplyScalar(ud.appearanceScale);
   ud.bobHeight=(ud.bobHeight||.03)*(.92+seed*.16);
+  ud.wavePhase=seed*Math.PI*2;
+  ud.waveSpeed=.72+seed*.28;
+  ud.waveAmplitude=.008+seed*.014;
+  ud.waveTilt=.006+seed*.008;
+  ud.waveLastOffset=0;
   ud.appearanceNote=seed>.82?'潮に磨かれた跡':seed<.12?'淡い色むら':'';
   const clones=new Map();
   obj.traverse(child=>{
    if(!child.isMesh||!child.material)return;
    const cloneOne=m=>{
-    if(!clones.has(m.uuid)){
-     const cp=m.clone();
-     if(cp.color&&cp.color.isColor)cp.color.offsetHSL((seed-.5)*.018,(seed-.5)*.035,(seed-.5)*.025);
-     clones.set(m.uuid,cp);
-    }
+    if(!clones.has(m.uuid))clones.set(m.uuid,finishMaterial(m,seed));
     return clones.get(m.uuid);
    };
    child.material=Array.isArray(child.material)?child.material.map(cloneOne):cloneOne(child.material);
@@ -66,8 +110,6 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
  if(!water||!scene)return;
  const dawn=smooth(.16,.24,progress)*(1-smooth(.30,.38,progress)),twilight=Math.max(sunsetRatio,dawn*.72);
  const dusk=smooth(.68,.76,progress)*(1-smooth(.82,.90,progress));
- const sunColor=water.material.uniforms&&water.material.uniforms.sunColor;
- if(sunColor&&sunColor.value&&sunColor.value.isColor)sunColor.value.lerp(new THREE.Color(0xffbd91),twilight*.10);
  if(water.material.uniforms&&water.material.uniforms.distortionScale)water.material.uniforms.distortionScale.value=1.5+twilight*.07+nightRatio*.025;
  if(scene.fog&&scene.fog.isFogExp2){
   const mistColor=new THREE.Color(0x8899aa).lerp(new THREE.Color(0xa9bdc8),dawn*.20+dusk*.07+nightRatio*.035);
@@ -135,5 +177,5 @@ function renderLore(itemName){
  if(instance&&instance.userData.appearanceNote){const detail=document.createElement('span');detail.style.display='block';detail.style.marginTop='6px';detail.textContent='個体の特徴：'+instance.userData.appearanceNote;note.appendChild(detail);}
  panel.appendChild(note);
 }
-g.DrifanEnhancements=Object.freeze({init,updateTime,updateFrame,recordObservation,renderJournal,renderLore,getWind:()=>wind,getWindLabel:()=>lastWindLabel});
+g.DrifanEnhancements=Object.freeze({init,updateTime,updateFrame,recordObservation,renderJournal,renderLore,applySurfaceFinish,getWind:()=>wind,getWindLabel:()=>lastWindLabel});
 })(window);
