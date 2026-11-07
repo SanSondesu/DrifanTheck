@@ -78,7 +78,7 @@ let scene, camera, renderer, water, sky;
         const MOONLIGHT_COLOR = new THREE.Color(0xafd5ff);
         const WATER_BASE_DAY = new THREE.Color(0x003554); 
         const WATER_BASE_SUNSET = new THREE.Color(0x1a0f05);
-        const WATER_BASE_NIGHT = new THREE.Color(0x08182b); 
+        const WATER_BASE_NIGHT = new THREE.Color(0x0d2035); 
 
         let particles = [];
         let particleTexture;
