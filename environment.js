@@ -753,13 +753,6 @@
             if (rock) {
                  rock.position.y = 1.3 + Math.sin(time * 0.5) * 0.04;
                  rock.rotation.y = 0.75 + Math.sin(time * 0.1) * 0.01;
-                 const waterShadow = rock.userData.waterShadow;
-                 if (waterShadow) {
-                     waterShadow.position.x = rock.position.x + 1.5 + sun.x * 0.0015;
-                     waterShadow.position.z = rock.position.z + 1.5 + sun.z * 0.0015;
-                     waterShadow.material.opacity = 0.34 + Math.max(0, directionalLight.intensity) * 0.22;
-                     waterShadow.rotation.z = Math.atan2(sun.z, sun.x);
-                 }
             }
 
             const rockX = rock ? rock.position.x : 0;
