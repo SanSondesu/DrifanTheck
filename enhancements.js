@@ -125,7 +125,7 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
    .lerp(new THREE.Color(0xd6ae9a),Math.min(.28,twilight*.24))
    .lerp(new THREE.Color(0x71839e),nightRatio*.28);
   scene.fog.color.copy(mistColor);
-  scene.fog.density=.00016+twilight*.00009+nightRatio*.000025;
+  scene.fog.density=0; // 遠景の白い霞を無効化
  }
 }
 function updateFrame(now,nightRatio){
