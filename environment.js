@@ -595,12 +595,14 @@
             
             if (sunElevation > -2) {
                 water.material.uniforms['sunDirection'].value.copy(sun).normalize();
-                let intenseSunColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff3300), sunsetRatio);
-                water.material.uniforms['sunColor'].value.copy(intenseSunColor);
+                const warmReflection = new THREE.Color(0xfff2dc)
+                    .lerp(new THREE.Color(0xffad82), sunsetRatio * 0.68)
+                    .multiplyScalar(0.78 + dayRatio * 0.32);
+                water.material.uniforms['sunColor'].value.copy(warmReflection);
             } else {
-                // 夜は太陽ではなく月の方向から、細く淡い銀青色の反射を水面へ落とす
+                // 夜は月の方向から淡い銀青色の反射を水面へ落とす
                 water.material.uniforms['sunDirection'].value.copy(moon).normalize();
-                const moonReflection = new THREE.Color(0xc4dcff).multiplyScalar(0.22 + nightRatio * 0.38);
+                const moonReflection = new THREE.Color(0xbfd8ff).multiplyScalar(0.34 + nightRatio * 0.32);
                 water.material.uniforms['sunColor'].value.copy(moonReflection);
             }
 
@@ -644,7 +646,10 @@
             const frameScale = deltaSeconds * 60;
             const time = now * 0.001;
             const nowMs = now;
-            if (window.DrifanEnhancements) DrifanEnhancements.updateFrame(nowMs, currentNightRatio);
+            if (window.DrifanEnhancements) {
+                DrifanEnhancements.updateFrame(nowMs, currentNightRatio);
+                DrifanEnhancements.updateDiscoveryEffects(deltaSeconds);
+            }
 
             // レアな浮き玉の星形パーツを、控えめに明滅させる
             for (const floater of floaters) {
@@ -913,9 +918,10 @@
                         + Math.sin(crossPhase) * (f.userData.waveAmplitude || 0.012) * 0.32;
                     f.position.y += waveOffset;
                     f.userData.waveLastOffset = waveOffset;
-                    f.rotation.x += Math.cos(crossPhase) * (f.userData.waveTilt || 0.01);
-                    f.rotation.z += Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72;
-                    f.rotation.y += Math.sin(crossPhase * 0.7) * 0.00008 * frameScale;
+                    const baseTiltX = f.rotation.x;
+                    const baseTiltZ = f.rotation.z;
+                    f.rotation.x = baseTiltX + Math.cos(crossPhase) * (f.userData.waveTilt || 0.01);
+                    f.rotation.z = baseTiltZ + Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72;
                 }
             });
 
