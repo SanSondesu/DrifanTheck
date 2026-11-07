@@ -66,30 +66,10 @@
 
             rock = new THREE.Mesh(geometry, material);
             rock.position.set(0, 1.4, 0);
-            rock.castShadow = true;
-            rock.receiveShadow = true;
+            // 太陽光による投影影は使わず、岩肌そのものの陰影と色むらを残す
+            rock.castShadow = false;
+            rock.receiveShadow = false;
             scene.add(rock);
-
-            // 水面に落ちる、輪郭の柔らかい接地影
-            const shadowCanvas = document.createElement('canvas');
-            shadowCanvas.width = shadowCanvas.height = 128;
-            const ctx = shadowCanvas.getContext('2d');
-            const gradient = ctx.createRadialGradient(64, 64, 5, 64, 64, 62);
-            gradient.addColorStop(0, 'rgba(5,12,20,0.42)');
-            gradient.addColorStop(0.45, 'rgba(5,12,20,0.24)');
-            gradient.addColorStop(1, 'rgba(5,12,20,0)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 128, 128);
-            const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
-            const shadow = new THREE.Mesh(
-                new THREE.PlaneGeometry(22, 15),
-                new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity: 0.72 })
-            );
-            shadow.rotation.x = -Math.PI / 2;
-            shadow.position.set(1.5, 0.025, 1.5);
-            shadow.renderOrder = 2;
-            scene.add(shadow);
-            rock.userData.waterShadow = shadow;
         }
 
         function createSingleBottle(message, startPos) {
