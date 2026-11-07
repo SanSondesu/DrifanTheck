@@ -598,9 +598,10 @@
                 let intenseSunColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff3300), sunsetRatio);
                 water.material.uniforms['sunColor'].value.copy(intenseSunColor);
             } else {
-                water.material.uniforms['sunDirection'].value.set(0, 1, 0).normalize(); 
-                let starlightColor = new THREE.Color(0x77aaff).multiplyScalar(nightRatio * 0.35); 
-                water.material.uniforms['sunColor'].value.copy(starlightColor);
+                // 夜は太陽ではなく月の方向から、細く淡い銀青色の反射を水面へ落とす
+                water.material.uniforms['sunDirection'].value.copy(moon).normalize();
+                const moonReflection = new THREE.Color(0xc4dcff).multiplyScalar(0.22 + nightRatio * 0.38);
+                water.material.uniforms['sunColor'].value.copy(moonReflection);
             }
 
             const ambientDay = new THREE.Color(0x77aaff); 
@@ -761,6 +762,11 @@
             const avoidRadius = 12.0; 
 
             floaters.forEach(f => {
+                // 前フレームの追加波揺れを先に戻し、基礎の浮遊運動を毎フレーム安定して計算
+                if (f.userData.waveLastOffset) {
+                    f.position.y -= f.userData.waveLastOffset;
+                    f.userData.waveLastOffset = 0;
+                }
                 let forceX = 0, forceZ = 0;
                 
                 if (!f.userData.isBottle || !f.userData.isSinking) {
@@ -894,6 +900,22 @@
                     f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
                     f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
                     f.rotation.y += f.userData.rotSpeed * frameScale;
+                }
+
+                // それぞれ異なる位相・周期の小さなうねりを重ね、波面に沿う自然な傾きを作る
+                if (!(f.userData.isBottle && f.userData.isSinking)) {
+                    const wavePhase = time * (f.userData.waveSpeed || 0.8)
+                        + (f.userData.wavePhase || 0)
+                        + f.position.x * 0.018 + f.position.z * 0.014;
+                    const crossPhase = time * 0.61 + (f.userData.wavePhase || 0)
+                        + f.position.x * 0.011 - f.position.z * 0.016;
+                    const waveOffset = Math.sin(wavePhase) * (f.userData.waveAmplitude || 0.012)
+                        + Math.sin(crossPhase) * (f.userData.waveAmplitude || 0.012) * 0.32;
+                    f.position.y += waveOffset;
+                    f.userData.waveLastOffset = waveOffset;
+                    f.rotation.x += Math.cos(crossPhase) * (f.userData.waveTilt || 0.01);
+                    f.rotation.z += Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72;
+                    f.rotation.y += Math.sin(crossPhase * 0.7) * 0.00008 * frameScale;
                 }
             });
 
