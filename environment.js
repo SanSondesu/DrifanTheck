@@ -556,8 +556,10 @@
             let nightRatio = 1.0 - dayRatio;
             currentNightRatio = nightRatio;
             
-            let sunsetRaw = THREE.MathUtils.clamp(1.0 - Math.abs(sunElevation - 5) / 35.0, 0, 1);
-            let sunsetRatio = Math.pow(sunsetRaw, 1.5);
+            // 朝焼け・夕焼けを広めの時間帯でゆっくり移行させる
+            const dawnRatio = Math.exp(-Math.pow((progress - 0.25) / 0.135, 2) * 0.9);
+            const duskRatio = Math.exp(-Math.pow((progress - 0.75) / 0.135, 2) * 0.9);
+            let sunsetRatio = Math.max(dawnRatio, duskRatio);
             
             // 夕暮れ時に海鳥をフェードイン
             let isEvening = progress > 0.5 && progress < 0.85;
@@ -569,6 +571,20 @@
 
             const skyUniforms = sky.material.uniforms;
             if (skyUniforms['sunPosition']) skyUniforms['sunPosition'].value.copy(sun);
+
+            // 昼間も太陽高度に合わせて大気の青み・透明感を少しずつ変える
+            if (skyUniforms['turbidity']) {
+                skyUniforms['turbidity'].value = 6.2 + (1.0 - dayRatio) * 1.4 + sunsetRatio * 1.2;
+            }
+            if (skyUniforms['rayleigh']) {
+                skyUniforms['rayleigh'].value = 2.35 + dayRatio * 0.85 + sunsetRatio * 0.55;
+            }
+            if (skyUniforms['mieCoefficient']) {
+                skyUniforms['mieCoefficient'].value = 0.00035 + sunsetRatio * 0.00055;
+            }
+            if (skyUniforms['mieDirectionalG']) {
+                skyUniforms['mieDirectionalG'].value = 0.76 + sunsetRatio * 0.06;
+            }
             
             let sunMeshColor = new THREE.Color(4.0, 4.0, 4.0).lerp(new THREE.Color(1.0, 0.35, 0.0), sunsetRatio);
             sunMesh.material.color.copy(sunMeshColor);
@@ -582,7 +598,10 @@
 
             if (sunElevation > -10) {
                 directionalLight.position.copy(sun);
-                let dirColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xff4400), sunsetRatio);
+                const dawnColor = new THREE.Color(0xffc49a);
+                const duskColor = new THREE.Color(0xff967f);
+                const warmColor = new THREE.Color().lerpColors(dawnColor, duskColor, duskRatio);
+                let dirColor = new THREE.Color(0xffffff).lerp(warmColor, sunsetRatio * 0.88);
                 directionalLight.color.copy(dirColor);
                 
                 let lightInt = Math.max(0, (sunElevation + 10) / 20) * (2.0 - sunsetRatio * 1.5); 
@@ -608,15 +627,18 @@
 
             const ambientDay = new THREE.Color(0x77aaff); 
             const ambientNight = new THREE.Color(0x344b62); 
-            const ambientSunset = new THREE.Color(0x442211); 
-            
-            let clearAmbient = new THREE.Color().lerpColors(ambientNight, ambientDay, dayRatio).lerp(ambientSunset, sunsetRatio);
+            const ambientDawn = new THREE.Color(0x9a7180);
+            const ambientDusk = new THREE.Color(0x9b6470);
+            const ambientWarm = new THREE.Color().lerpColors(ambientDawn, ambientDusk, duskRatio);
+
+            let clearAmbient = new THREE.Color().lerpColors(ambientNight, ambientDay, dayRatio).lerp(ambientWarm, sunsetRatio * 0.78);
             ambientLight.color.copy(clearAmbient);
             
             let baseAmbientInt = 0.35 + (dayRatio * 0.25) - (sunsetRatio * 0.3) + (nightRatio * 0.06);
             ambientLight.intensity = baseAmbientInt;
 
-            let clearWater = new THREE.Color().lerpColors(WATER_BASE_NIGHT, WATER_BASE_DAY, dayRatio).lerp(WATER_BASE_SUNSET, sunsetRatio);
+            let clearWater = new THREE.Color().lerpColors(WATER_BASE_NIGHT, WATER_BASE_DAY, dayRatio)
+                .lerp(WATER_BASE_SUNSET, sunsetRatio * 0.82);
             water.material.uniforms['waterColor'].value.copy(clearWater);
 
             let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25) + (nightRatio * 0.045); 
