@@ -133,15 +133,38 @@ body {
             text-orientation: mixed;
             letter-spacing: 2px;
         }
+        #bottle-counter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            color: #e7dcc5;
+            text-shadow: 0 1px 5px rgba(0,0,0,.72);
+        }
+        .bottle-icon {
+            display: block;
+            width: 25px;
+            height: 41px;
+            flex: 0 0 auto;
+            overflow: visible;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,.55));
+        }
         .bottle-count-num {
             text-combine-upright: all;
             display: inline-block;
+            font-family: 'Shippori Mincho', serif;
+            font-weight: 500;
+            letter-spacing: .04em;
         }
         h1 {
             margin: 0;
-            font-size: 1.3rem;
-            font-weight: 300;
-            letter-spacing: 4px;
+            font-family: 'Shippori Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+            font-size: 1.28rem;
+            font-weight: 500;
+            letter-spacing: .24em;
+            line-height: 1.9;
+            color: #f0e5cf;
+            text-shadow: 0 1px 2px rgba(0,0,0,.55), 0 0 12px rgba(223,199,151,.16);
             pointer-events: none;
         }
         
