@@ -133,7 +133,7 @@
                 readBottlesCount++;
                 const counterElement = document.getElementById('bottle-counter');
                 if (counterElement) {
-                    counterElement.innerHTML = '🍾 <span class="bottle-count-num">' + readBottlesCount + '</span>';
+                    counterElement.innerHTML = '<svg class="bottle-icon" viewBox="0 0 32 52" role="img" aria-label="ボトルのイラスト" xmlns="http://www.w3.org/2000/svg"><path d="M12 3.5h8v5l-1.2 2.2v6.1c0 1.8 1 3.1 3 4.7 2.2 1.8 3.2 3.6 3.2 6.6v16.2c0 2.2-1.8 4-4 4H11c-2.2 0-4-1.8-4-4V28.1c0-3 1-4.8 3.2-6.6 2-1.6 3-2.9 3-4.7v-6.1L12 8.5z" fill="rgba(153,190,190,.22)" stroke="#d9c69b" stroke-width="1.35" stroke-linejoin="round"/><path d="M12 3.5h8v4.8h-8z" fill="#c6a875" stroke="#ead9b7" stroke-width="1"/><path d="M10 28.5c4 1.2 8 1.2 12 0M10 39.5c4 1.2 8 1.2 12 0" fill="none" stroke="rgba(226,218,194,.58)" stroke-width=".9"/><path d="M12.2 23.5c2.1-1.3 5.5-1.3 7.6 0" fill="none" stroke="#e5d7b8" stroke-width="1" stroke-linecap="round"/><path d="M11 30.5v6" stroke="rgba(235,245,239,.55)" stroke-width="1.2" stroke-linecap="round"/></svg><span class="bottle-count-num">' + readBottlesCount + '</span>';
                     counterElement.style.textShadow = '0 0 15px rgba(255, 255, 255, 1)';
                     setTimeout(() => {
                         counterElement.style.textShadow = '0px 2px 4px rgba(0, 0, 0, 0.9)';
