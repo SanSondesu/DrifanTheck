@@ -905,6 +905,17 @@
                     f.rotation.x = Math.sin(time * 1.1 + f.userData.phase) * 0.055;
                     f.rotation.z = Math.cos(time * 1.3 + f.userData.phase) * 0.045;
                     f.rotation.y += f.userData.rotSpeed * frameScale;
+                    // 帆はマストの根元を支点に、風向きと強さに合わせてごく小さくたわむ。
+                    const sailWind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {x:0,z:0,strength:0};
+                    const localWind = sailWind.x * Math.cos(f.rotation.y) - sailWind.z * Math.sin(f.rotation.y);
+                    f.traverse(part => {
+                        if (part.name !== 'main-sail' && part.name !== 'small-sail') return;
+                        const phase = part.userData.sailPhase || 0;
+                        const sizeFactor = part.name === 'small-sail' ? 0.62 : 1;
+                        const flutter = Math.sin(time * (1.5 + sailWind.strength * 18) + phase) * (0.006 + sailWind.strength * 0.24);
+                        const windBend = THREE.MathUtils.clamp(localWind * 1.35, -0.045, 0.045);
+                        part.rotation.z = (windBend + flutter) * sizeFactor;
+                    });
                 } else {
                     let pushOffset = 0;
                     if (f.userData.isPushed) {
@@ -954,17 +965,33 @@
                         const distSq = dx * dx + dz * dz;
                         if (distSq >= minDist * minDist) continue;
                         const dist = Math.sqrt(Math.max(distSq, 0.0001));
-                        const nx = distSq < 0.0001 ? (Math.random() < 0.5 ? 1 : -1) : dx / dist;
-                        const nz = distSq < 0.0001 ? 0 : dz / dist;
-                        const push = (minDist - dist) * 0.52;
-                        a.position.x -= nx * push; a.position.z -= nz * push;
-                        b.position.x += nx * push; b.position.z += nz * push;
+                        // 同位置に重なった場合も、毎フレーム方向が反転しない決定的な法線を使う。
+                        const fallbackAngle = (i * 17 + j * 31) * 2.399963229728653;
+                        const nx = distSq < 0.0001 ? Math.cos(fallbackAngle) : dx / dist;
+                        const nz = distSq < 0.0001 ? Math.sin(fallbackAngle) : dz / dist;
+                        const overlap = minDist - dist;
+                        const massA = a.userData.collisionMass || (a.userData.isBoat ? 2.2 : a.userData.isDriftwood ? 1.8 : 1);
+                        const massB = b.userData.collisionMass || (b.userData.isBoat ? 2.2 : b.userData.isDriftwood ? 1.8 : 1);
+                        const invA = 1 / massA, invB = 1 / massB, invTotal = invA + invB;
+                        const correction = overlap * 0.62;
+                        const pushA = correction * invA / invTotal, pushB = correction * invB / invTotal;
+                        a.position.x -= nx * pushA; a.position.z -= nz * pushA;
+                        b.position.x += nx * pushB; b.position.z += nz * pushB;
                         if (pass === 0) {
-                            const relativeSpeed = (b.userData.vx - a.userData.vx) * nx + (b.userData.vz - a.userData.vz) * nz;
+                            const relativeX = b.userData.vx - a.userData.vx;
+                            const relativeZ = b.userData.vz - a.userData.vz;
+                            const relativeSpeed = relativeX * nx + relativeZ * nz;
                             if (relativeSpeed < 0) {
-                                const impulse = -relativeSpeed * 0.32;
-                                a.userData.vx -= nx * impulse * 0.5; a.userData.vz -= nz * impulse * 0.5;
-                                b.userData.vx += nx * impulse * 0.5; b.userData.vz += nz * impulse * 0.5;
+                                const impulse = -relativeSpeed * 0.28 / invTotal;
+                                a.userData.vx -= nx * impulse * invA;
+                                a.userData.vz -= nz * impulse * invA;
+                                b.userData.vx += nx * impulse * invB;
+                                b.userData.vz += nz * impulse * invB;
+                                // 接触のかすかな接線成分だけを回転に移し、跳ね返りを穏やかにする。
+                                const tangentSpeed = relativeX * nz - relativeZ * nx;
+                                const spin = THREE.MathUtils.clamp(tangentSpeed * 0.012, -0.0012, 0.0012);
+                                a.userData.rotSpeed = THREE.MathUtils.clamp(a.userData.rotSpeed - spin * invA, -0.012, 0.012);
+                                b.userData.rotSpeed = THREE.MathUtils.clamp(b.userData.rotSpeed + spin * invB, -0.012, 0.012);
                             }
                         }
                     }
