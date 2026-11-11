@@ -125,7 +125,9 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
    .lerp(new THREE.Color(0xd6ae9a),Math.min(.28,twilight*.24))
    .lerp(new THREE.Color(0x71839e),nightRatio*.28);
   scene.fog.color.copy(mistColor);
-  scene.fog.density=0; // 遠景の白い霞を無効化
+  // 早朝だけ、ごく薄い霧を出し、朝の進行とともに自然に晴らす。
+  // 既存の岩・波・漂流物の色や形を変えないため、濃度は控えめに制限。
+  scene.fog.density=0.00016*dawn;
  }
 }
 function updateFrame(now,nightRatio){
