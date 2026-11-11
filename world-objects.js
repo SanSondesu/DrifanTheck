@@ -336,7 +336,8 @@
                     rotSpeed: baseRot,
                     phase: Math.random() * Math.PI * 2,
                     bobHeight: 0.05 + Math.random() * 0.04,
-                    isBottle: false
+                    isBottle: false,
+                    isDriftwood: true
                 };
 
                 scene.add(floaterGroup);
