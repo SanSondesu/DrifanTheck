@@ -86,6 +86,7 @@ function individualize(){
   ud.waveSpeed=.9+seed*.42;
   // 重心と水面での安定性に合わせ、形状を変えず揺れの量だけを個別化。
   const motionScale = ud.isBoat ? 0.58 : ud.isRecord ? 0.68 : ud.isLantern ? 0.78 : ud.isWatch ? 0.72 : ud.isDriftwood ? 1.12 : ud.isGlassBall ? 1.08 : ud.isBottle ? 0.88 : 1;
+  ud.collisionMass = ud.isBoat ? 2.2 : ud.isDriftwood ? 1.65 : ud.isLantern ? 1.15 : ud.isRecord ? 1.2 : ud.isWatch ? 1.05 : ud.isGlassBall ? 0.72 : ud.isBottle ? 0.82 : 1;
   ud.waveAmplitude=(.018+seed*.022)*motionScale;
   ud.waveTilt = (.012 + seed * .014) * (ud.isBoat ? 0.62 : ud.isRecord ? 0.72 : ud.isDriftwood ? 1.08 : 1);
   if(Number.isFinite(ud.baseRotSpeed)){
