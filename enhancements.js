@@ -85,11 +85,11 @@ function individualize(){
   ud.wavePhase=seed*Math.PI*2;
   ud.waveSpeed=.9+seed*.42;
   // 重心と水面での安定性に合わせ、形状を変えず揺れの量だけを個別化。
-  const motionScale=ud.isBoat?.58:ud.isRecord?.68:ud.isLantern?.78:ud.isWatch?.72:ud.isDriftwood?1.12:ud.isGlassBall?1.08:ud.isBottle?.88:1;
+  const motionScale = ud.isBoat ? 0.58 : ud.isRecord ? 0.68 : ud.isLantern ? 0.78 : ud.isWatch ? 0.72 : ud.isDriftwood ? 1.12 : ud.isGlassBall ? 1.08 : ud.isBottle ? 0.88 : 1;
   ud.waveAmplitude=(.018+seed*.022)*motionScale;
-  ud.waveTilt=(.012+seed*.014)*(ud.isBoat?.62:ud.isRecord?.72:ud.isDriftwood?1.08:1);
+  ud.waveTilt = (.012 + seed * .014) * (ud.isBoat ? 0.62 : ud.isRecord ? 0.72 : ud.isDriftwood ? 1.08 : 1);
   if(Number.isFinite(ud.baseRotSpeed)){
-   const rotationScale=ud.isBoat?.48:ud.isRecord?.58:ud.isLantern?.72:ud.isDriftwood?1.12:ud.isGlassBall?1.08:1;
+   const rotationScale = ud.isBoat ? 0.48 : ud.isRecord ? 0.58 : ud.isLantern ? 0.72 : ud.isDriftwood ? 1.12 : ud.isGlassBall ? 1.08 : 1;
    ud.baseRotSpeed*=rotationScale;
    ud.rotSpeed=ud.baseRotSpeed;
   }
