@@ -84,8 +84,16 @@ function individualize(){
   ud.bobHeight=(ud.bobHeight||.03)*(.92+seed*.16);
   ud.wavePhase=seed*Math.PI*2;
   ud.waveSpeed=.9+seed*.42;
-  ud.waveAmplitude=.018+seed*.022;
-  ud.waveTilt=.012+seed*.014;
+  // 重心と水面での安定性に合わせ、形状を変えず揺れの量だけを個別化。
+  const motionScale = ud.isBoat ? 0.58 : ud.isRecord ? 0.68 : ud.isLantern ? 0.78 : ud.isWatch ? 0.72 : ud.isDriftwood ? 1.12 : ud.isGlassBall ? 1.08 : ud.isBottle ? 0.88 : 1;
+  ud.collisionMass = ud.isBoat ? 2.2 : ud.isDriftwood ? 1.65 : ud.isLantern ? 1.15 : ud.isRecord ? 1.2 : ud.isWatch ? 1.05 : ud.isGlassBall ? 0.72 : ud.isBottle ? 0.82 : 1;
+  ud.waveAmplitude=(.018+seed*.022)*motionScale;
+  ud.waveTilt = (.012 + seed * .014) * (ud.isBoat ? 0.62 : ud.isRecord ? 0.72 : ud.isDriftwood ? 1.08 : 1);
+  if(Number.isFinite(ud.baseRotSpeed)){
+   const rotationScale = ud.isBoat ? 0.48 : ud.isRecord ? 0.58 : ud.isLantern ? 0.72 : ud.isDriftwood ? 1.12 : ud.isGlassBall ? 1.08 : 1;
+   ud.baseRotSpeed*=rotationScale;
+   ud.rotSpeed=ud.baseRotSpeed;
+  }
   ud.waveLastOffset=0;
   ud.appearanceNote=seed>.82?'潮に磨かれた跡':seed<.12?'淡い色むら':'';
   const clones=new Map();
@@ -125,7 +133,9 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
    .lerp(new THREE.Color(0xd6ae9a),Math.min(.28,twilight*.24))
    .lerp(new THREE.Color(0x71839e),nightRatio*.28);
   scene.fog.color.copy(mistColor);
-  scene.fog.density=0; // 遠景の白い霞を無効化
+  // 早朝だけ、ごく薄い霧を出し、朝の進行とともに自然に晴らす。
+  // 既存の岩・波・漂流物の色や形を変えないため、濃度は控えめに制限。
+  scene.fog.density=0.00016*dawn;
  }
 }
 function updateFrame(now,nightRatio){

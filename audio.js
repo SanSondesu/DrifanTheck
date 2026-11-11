@@ -1,4 +1,5 @@
 /* audio.js: feature functions using shared app.js state. */
+        let waveSoundTimer = null;
         async function initAudio() {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -55,9 +56,15 @@
 
         function scheduleNextWave() {
             if(!audioCtx) return;
-            const interval = ((window.DrifanConfig && DrifanConfig.audio.waveIntervalMin) || 6600) + Math.random() * ((window.DrifanConfig && DrifanConfig.audio.waveIntervalRange) || 1000); 
-            setTimeout(() => {
-                playWaveSound();
+            if (waveSoundTimer !== null) clearTimeout(waveSoundTimer);
+            const wind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {strength:0.02};
+            const windLevel = THREE.MathUtils.clamp((wind.strength - 0.012) / 0.034, 0, 1);
+            const base = ((window.DrifanConfig && DrifanConfig.audio.waveIntervalMin) || 6600);
+            const range = ((window.DrifanConfig && DrifanConfig.audio.waveIntervalRange) || 1000);
+            const interval = (base + Math.random() * range) * (1 - windLevel * 0.12);
+            waveSoundTimer = setTimeout(() => {
+                waveSoundTimer = null;
+                playWaveSound(windLevel);
                 scheduleNextWave();
             }, interval);
         }
@@ -248,8 +255,8 @@
             });
         }
 
-        async function playWaveSound() {
-            if(!audioCtx) return;
+        async function playWaveSound(windLevel = 0.35) {
+            if(!audioCtx || !gainNode || !biquadFilter) return;
             if(audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 try {
                    await audioCtx.resume();
@@ -265,8 +272,15 @@
             gainNode.gain.setValueAtTime(gainNode.gain.value, now);
             biquadFilter.frequency.setValueAtTime(biquadFilter.frequency.value, now);
             
-            gainNode.gain.linearRampToValueAtTime(0.035 + Math.random() * 0.02, now + 1.5);
-            biquadFilter.frequency.linearRampToValueAtTime(600 + Math.random() * 200, now + 1.5);
+            // Water shader clock provides a slow phase cue; wind adds only a restrained intensity lift.
+            const waterPhase = water && water.material && water.material.uniforms && water.material.uniforms.time
+                ? water.material.uniforms.time.value : now * 0.2;
+            const swell = 0.5 + 0.5 * Math.sin(waterPhase * 0.72);
+            const level = THREE.MathUtils.clamp(windLevel, 0, 1);
+            const waveGain = 0.026 + swell * 0.009 + level * 0.012;
+            const filterTarget = 480 + swell * 90 + level * 190;
+            gainNode.gain.linearRampToValueAtTime(waveGain, now + 1.5);
+            biquadFilter.frequency.linearRampToValueAtTime(filterTarget, now + 1.5);
             
             gainNode.gain.exponentialRampToValueAtTime(0.001, now + 4.5);
             biquadFilter.frequency.exponentialRampToValueAtTime(200, now + 4.5);
