@@ -574,6 +574,8 @@
             sailShape.closePath();
             const sail = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), sailMat);
             sail.position.set(-0.18, 0.02, 0.025);
+            sail.name = 'main-sail';
+            sail.userData.sailPhase = Math.random() * Math.PI * 2;
             boat.add(sail);
 
             // マスト先端の小さな三角旗。旗の根元も棒に接続
@@ -595,7 +597,7 @@
             boat.add(rope);
 
             if(variant.cabin){const cabin=new THREE.Mesh(new THREE.BoxGeometry(.42,.25,.42),woodMat);cabin.position.set(-.72,.22,0);boat.add(cabin);const roof=new THREE.Mesh(new THREE.BoxGeometry(.5,.06,.48),edgeMat);roof.position.set(-.72,.38,0);boat.add(roof);}
-            if(variant.secondSail){const smallMast=new THREE.Mesh(new THREE.CylinderGeometry(.022,.03,.85,7),edgeMat);smallMast.position.set(.62,.48,0);boat.add(smallMast);const smallShape=new THREE.Shape();smallShape.moveTo(0,.08);smallShape.lineTo(0,.78);smallShape.lineTo(.42,.22);smallShape.closePath();const smallSail=new THREE.Mesh(new THREE.ShapeGeometry(smallShape),sailMat);smallSail.position.set(.62,.04,.035);boat.add(smallSail);}
+            if(variant.secondSail){const smallMast=new THREE.Mesh(new THREE.CylinderGeometry(.022,.03,.85,7),edgeMat);smallMast.position.set(.62,.48,0);boat.add(smallMast);const smallShape=new THREE.Shape();smallShape.moveTo(0,.08);smallShape.lineTo(0,.78);smallShape.lineTo(.42,.22);smallShape.closePath();const smallSail=new THREE.Mesh(new THREE.ShapeGeometry(smallShape),sailMat);smallSail.position.set(.62,.04,.035);smallSail.name='small-sail';smallSail.userData.sailPhase=Math.random()*Math.PI*2;boat.add(smallSail);}
             boat.scale.setScalar(scale*variant.size);boat.userData.modelVariant=variantIndex;return boat;
         }
 
