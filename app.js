@@ -231,7 +231,7 @@ let scene, camera, renderer, water, sky;
             sun = new THREE.Vector3();
             moon = new THREE.Vector3();
 
-            const waterGeometry = new THREE.PlaneGeometry(40000, 40000);
+            const waterGeometry = new THREE.PlaneGeometry(40000, 40000, 384, 384);
             water = new THREE.Water(
                 waterGeometry,
                 {
@@ -251,6 +251,33 @@ let scene, camera, renderer, water, sky;
                 }
             );
             water.rotation.x = -Math.PI / 2;
+
+            // 水面そのものを変形させる頂点シェーダー。反射模様だけでなく、波の山と谷を実際の立体形状にする。
+            const oceanWaveTime = { value: 0 };
+            water.userData.waveTimeUniform = oceanWaveTime;
+            water.material.onBeforeCompile = (shader) => {
+                shader.uniforms.uOceanWaveTime = oceanWaveTime;
+                shader.vertexShader = shader.vertexShader.replace(
+                    'varying vec4 worldPosition;',
+                    'varying vec4 worldPosition;\nuniform float uOceanWaveTime;'
+                );
+                const originalWorldPosition = 'worldPosition = modelMatrix * vec4( position, 1.0 );';
+                const displacedWorldPosition = `
+                    vec3 oceanWavePosition = position;
+                    float oceanWaveA = sin(position.x * 0.0105 + position.y * 0.0060 + uOceanWaveTime * 0.72) * 1.15;
+                    float oceanWaveB = sin(position.x * 0.0048 - position.y * 0.0130 - uOceanWaveTime * 0.52) * 0.72;
+                    float oceanWaveC = sin((position.x - position.y) * 0.0180 + uOceanWaveTime * 0.88) * 0.28;
+                    oceanWavePosition.z += oceanWaveA + oceanWaveB + oceanWaveC;
+                    worldPosition = modelMatrix * vec4( oceanWavePosition, 1.0 );
+                `;
+                if (shader.vertexShader.includes(originalWorldPosition)) {
+                    shader.vertexShader = shader.vertexShader.replace(originalWorldPosition, displacedWorldPosition);
+                } else {
+                    console.warn('DrifanTheck: ocean vertex displacement anchor was not found.');
+                }
+            };
+            water.material.customProgramCacheKey = () => 'drifantheck-geometric-ocean-waves-v1';
+            water.material.needsUpdate = true;
             scene.add(water);
 
             scene.fog = new THREE.FogExp2(0x8899aa, 0.000);
