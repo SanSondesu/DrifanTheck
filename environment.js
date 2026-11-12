@@ -658,11 +658,13 @@
         // 水面シェーダーと漂流物で共用する、同一形状の波高計算。
         // PlaneGeometryのローカルY軸はワールドZ軸と反転するため、ここでも符号を合わせる。
         function getOceanWaveHeight(worldX, worldZ, waveTime) {
+            // Water mesh is rotated -90 degrees around X: local Y is world -Z,
+            // while local Z displacement becomes world-space height.
             const localX = worldX;
             const localY = -worldZ;
-            return Math.sin(localX * 0.0105 + localY * 0.0060 + waveTime * 0.72) * 1.15
-                + Math.sin(localX * 0.0048 - localY * 0.0130 - waveTime * 0.52) * 0.72
-                + Math.sin((localX - localY) * 0.0180 + waveTime * 0.88) * 0.28;
+            return Math.sin(localX * 0.0068 + localY * 0.0042 + waveTime * 0.72) * 0.72
+                + Math.sin(localX * 0.0034 - localY * 0.0072 - waveTime * 0.52) * 0.42
+                + Math.sin((localX - localY) * 0.0085 + waveTime * 0.88) * 0.18;
         }
 
         let lastRenderTime = 0;
@@ -716,7 +718,7 @@
 
             water.material.uniforms['time'].value += 0.2 * deltaSeconds;
             if (water.userData.waveTimeUniform) {
-                water.userData.waveTimeUniform.value += 0.2 * deltaSeconds;
+                water.userData.waveTimeUniform.value += 0.75 * deltaSeconds;
             } 
             
             if (bioluminescence) {
