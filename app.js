@@ -260,13 +260,13 @@ let scene, camera, renderer, water, sky;
                 shader.uniforms.uOceanWaveTime = oceanWaveTime;
                 shader.vertexShader = 'uniform float uOceanWaveTime;\n' + shader.vertexShader;
 
-                const waveVertexCode = \`
+                const waveVertexCode = `
                     vec3 displacedPosition = position;
                     float oceanWaveA = sin(position.x * 0.0068 + position.y * 0.0042 + uOceanWaveTime * 0.72) * 0.72;
                     float oceanWaveB = sin(position.x * 0.0034 - position.y * 0.0072 - uOceanWaveTime * 0.52) * 0.42;
                     float oceanWaveC = sin((position.x - position.y) * 0.0085 + uOceanWaveTime * 0.88) * 0.18;
                     displacedPosition.z += oceanWaveA + oceanWaveB + oceanWaveC;
-                \`;
+                `;
                 shader.vertexShader = shader.vertexShader.replace('void main() {', 'void main() {\n' + waveVertexCode);
 
                 const positionPattern = /vec4\(\s*position\s*,\s*1\.0\s*\)/g;
