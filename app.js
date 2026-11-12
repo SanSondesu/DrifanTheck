@@ -276,7 +276,7 @@ let scene, camera, renderer, water, sky;
                     return;
                 }
                 shader.vertexShader = shader.vertexShader.replace(
-                    /vec4\\(\\s*position\\s*,\\s*1\\.0\\s*\\)/g,
+                    positionPattern,
                     'vec4( displacedPosition, 1.0 )'
                 );
             };
