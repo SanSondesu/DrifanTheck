@@ -940,10 +940,7 @@
                         }
                     }
 
-                    const waveTime = water && water.userData.waveTimeUniform
-                        ? water.userData.waveTimeUniform.value : time * 0.2;
-                    const localSeaHeight = getOceanWaveHeight(f.position.x, f.position.z, waveTime);
-                    f.position.y = localSeaHeight + Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
+                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
                     f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08;
                     f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06;
                     f.rotation.y += f.userData.rotSpeed * frameScale;
