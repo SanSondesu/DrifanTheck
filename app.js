@@ -258,10 +258,7 @@ let scene, camera, renderer, water, sky;
             water.userData.waveTimeUniform = oceanWaveTime;
             water.material.onBeforeCompile = (shader) => {
                 shader.uniforms.uOceanWaveTime = oceanWaveTime;
-                shader.vertexShader = shader.vertexShader.replace(
-                    'varying vec4 worldPosition;',
-                    'varying vec4 worldPosition;\\nuniform float uOceanWaveTime;'
-                );
+                shader.vertexShader = 'uniform float uOceanWaveTime;\\n' + shader.vertexShader;
 
                 const waveVertexCode = `
                     vec3 displacedPosition = position;
@@ -272,7 +269,8 @@ let scene, camera, renderer, water, sky;
                 `;
                 shader.vertexShader = shader.vertexShader.replace('void main() {', 'void main() {\\n' + waveVertexCode);
 
-                const positionCalls = shader.vertexShader.match(/vec4\\(\\s*position\\s*,\\s*1\\.0\\s*\\)/g) || [];
+                const positionPattern = /vec4\\(\\s*position\\s*,\\s*1\\.0\\s*\\)/g;
+                const positionCalls = shader.vertexShader.match(positionPattern) || [];
                 if (positionCalls.length < 3) {
                     console.error('DrifanTheck: water vertex shader layout changed; geometric waves were not applied.', positionCalls.length);
                     return;
