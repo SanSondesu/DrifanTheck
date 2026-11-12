@@ -280,7 +280,7 @@ let scene, camera, renderer, water, sky;
                     'vec4( displacedPosition, 1.0 )'
                 );
             };
-            water.material.customProgramCacheKey = () => 'drifantheck-geometric-ocean-waves-v2';
+            water.material.customProgramCacheKey = () => 'drifantheck-geometric-ocean-waves-v3';
             water.material.needsUpdate = true;
             scene.add(water);
 
