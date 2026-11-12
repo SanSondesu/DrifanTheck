@@ -271,7 +271,7 @@ let scene, camera, renderer, water, sky;
 
                 const positionPattern = /vec4\(\s*position\s*,\s*1\.0\s*\)/g;
                 const positionCalls = shader.vertexShader.match(positionPattern) || [];
-                if (positionCalls.length < 3) {
+                if (positionCalls.length < 2) {
                     console.error('DrifanTheck: water vertex shader layout changed; geometric waves were not applied.', positionCalls.length);
                     return;
                 }
