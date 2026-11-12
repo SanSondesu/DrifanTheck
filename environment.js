@@ -655,6 +655,16 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // 水面シェーダーと漂流物で共用する、同一形状の波高計算。
+        // PlaneGeometryのローカルY軸はワールドZ軸と反転するため、ここでも符号を合わせる。
+        function getOceanWaveHeight(worldX, worldZ, waveTime) {
+            const localX = worldX;
+            const localY = -worldZ;
+            return Math.sin(localX * 0.0105 + localY * 0.0060 + waveTime * 0.72) * 1.15
+                + Math.sin(localX * 0.0048 - localY * 0.0130 - waveTime * 0.52) * 0.72
+                + Math.sin((localX - localY) * 0.0180 + waveTime * 0.88) * 0.28;
+        }
+
         let lastRenderTime = 0;
 
         function animate(now) {
@@ -704,7 +714,10 @@
                 });
             }
 
-            water.material.uniforms['time'].value += 0.2 * deltaSeconds; 
+            water.material.uniforms['time'].value += 0.2 * deltaSeconds;
+            if (water.userData.waveTimeUniform) {
+                water.userData.waveTimeUniform.value += 0.2 * deltaSeconds;
+            } 
             
             if (bioluminescence) {
                 bioluminescence.material.uniforms['time'].value = time;
@@ -927,9 +940,12 @@
                         }
                     }
 
-                    f.position.y = Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
-                    f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08; 
-                    f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06; 
+                    const waveTime = water && water.userData.waveTimeUniform
+                        ? water.userData.waveTimeUniform.value : time * 0.2;
+                    const localSeaHeight = getOceanWaveHeight(f.position.x, f.position.z, waveTime);
+                    f.position.y = localSeaHeight + Math.sin(time * 1.8 + f.userData.phase) * f.userData.bobHeight + pushOffset;
+                    f.rotation.x = Math.sin(time * 1.2 + f.userData.phase) * 0.08;
+                    f.rotation.z = Math.cos(time * 1.5 + f.userData.phase) * 0.06;
                     f.rotation.y += f.userData.rotSpeed * frameScale;
                 }
 
@@ -940,14 +956,22 @@
                         + f.position.x * 0.018 + f.position.z * 0.014;
                     const crossPhase = time * 0.61 + (f.userData.wavePhase || 0)
                         + f.position.x * 0.011 - f.position.z * 0.016;
-                    const waveOffset = Math.sin(wavePhase) * (f.userData.waveAmplitude || 0.012)
+                    const gentleBob = Math.sin(wavePhase) * (f.userData.waveAmplitude || 0.012)
                         + Math.sin(crossPhase) * (f.userData.waveAmplitude || 0.012) * 0.32;
+                    const waveTime = water && water.userData.waveTimeUniform
+                        ? water.userData.waveTimeUniform.value : time * 0.2;
+                    const waveOffset = getOceanWaveHeight(f.position.x, f.position.z, waveTime) + gentleBob;
                     f.position.y += waveOffset;
                     f.userData.waveLastOffset = waveOffset;
                     const baseTiltX = f.rotation.x;
                     const baseTiltZ = f.rotation.z;
-                    f.rotation.x = baseTiltX + Math.cos(crossPhase) * (f.userData.waveTilt || 0.01);
-                    f.rotation.z = baseTiltZ + Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72;
+                    const slopeStep = 5.0;
+                    const slopeX = (getOceanWaveHeight(f.position.x + slopeStep, f.position.z, waveTime)
+                        - getOceanWaveHeight(f.position.x - slopeStep, f.position.z, waveTime)) / (2 * slopeStep);
+                    const slopeZ = (getOceanWaveHeight(f.position.x, f.position.z + slopeStep, waveTime)
+                        - getOceanWaveHeight(f.position.x, f.position.z - slopeStep, waveTime)) / (2 * slopeStep);
+                    f.rotation.x = baseTiltX + Math.cos(crossPhase) * (f.userData.waveTilt || 0.01) + Math.atan(slopeZ) * 0.42;
+                    f.rotation.z = baseTiltZ + Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72 - Math.atan(slopeX) * 0.42;
                 }
             });
 
