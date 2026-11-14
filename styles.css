@@ -853,3 +853,5 @@ body {
         padding: 26px 20px;
     }
 }
+
+#preview-canvas { touch-action: none; }
