@@ -808,3 +808,48 @@ body {
     
 
 #sea-observation{margin-top:24px;padding:15px 14px 12px;border:1px solid rgba(212,175,55,.28);border-radius:3px;background:linear-gradient(145deg,rgba(18,30,35,.38),rgba(18,20,25,.18))}#sea-observation h3{margin:0 0 10px!important;color:#d0b77e!important;font-size:.98rem!important;letter-spacing:1.5px}#sea-observation-list p{margin:6px 0;color:#c8bdab;font-family:'Klee One',cursive;font-size:.84rem;line-height:1.8}#sea-observation-list .observation-entry{padding:9px 10px;margin:0 0 9px;border-left:1px solid rgba(212,175,55,.55);background:rgba(5,12,18,.18)}#sea-observation-list .observation-date{display:block;color:#c7ad75;font:.66rem 'Montserrat',sans-serif;letter-spacing:1px;margin-bottom:4px}#sea-observation-list .observation-text{color:#e0d8c8;font:.84rem/1.8 'Klee One',cursive}#item-description .lore-note{display:block;margin-top:12px;padding-top:9px;border-top:1px dashed rgba(137,111,75,.35);color:#766448;font-size:.84rem}
+/* Responsive modal sizing: preserve the established appearance while keeping
+   content inside narrow phone screens and dynamic viewport bounds. */
+*, *::before, *::after { box-sizing: border-box; }
+#message-container {
+    width: min(560px, calc(100vw - 32px));
+    min-width: 0;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+}
+#notebook-container {
+    box-sizing: border-box;
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
+}
+.notebook-body { min-height: 0; overflow: auto; }
+#compose-container {
+    width: min(360px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    box-sizing: border-box;
+}
+#compose-textarea { box-sizing: border-box; max-width: 100%; }
+#circular-slider { touch-action: none; }
+@media (max-width: 600px) {
+    #message-container {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        min-width: 0;
+        padding: 28px 22px;
+    }
+    #message-text { font-size: clamp(1rem, 4.5vw, 1.25rem); line-height: 2; }
+    #notebook-container {
+        width: calc(100vw - 24px) !important;
+        max-width: calc(100vw - 24px);
+        height: min(85dvh, 760px);
+        max-height: calc(100dvh - 24px);
+        padding: 16px !important;
+    }
+    #compose-container {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        padding: 26px 20px;
+    }
+}
