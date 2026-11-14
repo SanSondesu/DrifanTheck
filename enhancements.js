@@ -138,10 +138,11 @@ function updateTime(progress,dayRatio,sunsetRatio,nightRatio){
   scene.fog.density=0.00016*dawn;
  }
 }
-function updateFrame(now,nightRatio){
+function updateFrame(now,nightRatio,deltaSeconds=1/60){
  const t=now*.001;
+ const dt=Math.min(Math.max(deltaSeconds||0,0),.1);
  const targetStrength=.016+.018*(.5+.5*Math.sin(t*.035+wind.phase))+.010*(.5+.5*Math.sin(t*.013+wind.phase*1.7));
- wind.strength+=(targetStrength-wind.strength)*.012;
+ wind.strength+=(targetStrength-wind.strength)*(1-Math.exp(-dt/5));
  const direction=t*.018+Math.sin(t*.009+wind.phase)*.22;
  wind.x=Math.cos(direction)*wind.strength;
  wind.z=Math.sin(direction)*wind.strength;
@@ -150,6 +151,14 @@ function updateFrame(now,nightRatio){
   if(!lantern.parent)return;
   plane.position.x=lantern.position.x+Math.sin(t*.45+phase)*.7;
   plane.position.z=lantern.position.z+Math.cos(t*.38+phase)*.45;
+  const waveTime=water&&water.userData&&water.userData.waveTimeUniform?water.userData.waveTimeUniform.value:t*.2;
+  const waveHeight=typeof getOceanWaveHeight==='function'?getOceanWaveHeight(plane.position.x,plane.position.z,waveTime):0;
+  plane.position.y=waveHeight+.035;
+  if(typeof getOceanWaveHeight==='function'){
+   const step=3;
+   const slopeX=(getOceanWaveHeight(plane.position.x+step,plane.position.z,waveTime)-getOceanWaveHeight(plane.position.x-step,plane.position.z,waveTime))/(2*step);
+   plane.rotation.z=-Math.atan(slopeX)*.55+Math.sin(t*.35+phase)*.025;
+  }
   const tapGlow=lantern.userData&&lantern.userData.isGlowing?0.035:0;
   plane.material.opacity=nightRatio*(.045+.03*(.5+.5*Math.sin(t*1.1+phase))+tapGlow);
   plane.rotation.z=Math.sin(t*.35+phase)*.08;
