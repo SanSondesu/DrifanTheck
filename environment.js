@@ -697,6 +697,19 @@
             return THREE.MathUtils.lerp(a, b, ty);
         }
 
+        function getFloaterCollisionRadius(floater, dirX, dirZ) {
+            const data = floater.userData || {};
+            const fallback = data.collisionRadius || 1.5;
+            const halfLength = data.collisionHalfLength || fallback;
+            const halfWidth = data.collisionHalfWidth || fallback;
+            const angle = floater.rotation.y || 0;
+            const along = dirX * Math.cos(angle) - dirZ * Math.sin(angle);
+            const across = dirX * Math.sin(angle) + dirZ * Math.cos(angle);
+            const normalized = (along * along) / (halfLength * halfLength)
+                + (across * across) / (halfWidth * halfWidth);
+            return normalized > 0 ? 1 / Math.sqrt(normalized) : fallback;
+        }
+
         let lastRenderTime = 0;
         let pmremRenderTarget = null;
         let pmremUpdateTimer = null;
@@ -1036,14 +1049,16 @@
                         const b = floaters[j];
                         if (b.userData.isBottle && b.userData.isSinking) continue;
                         const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
-                        const minDist = (a.userData.collisionRadius || 1.5) + (b.userData.collisionRadius || 1.5);
                         const distSq = dx * dx + dz * dz;
-                        if (distSq >= minDist * minDist) continue;
                         const dist = Math.sqrt(Math.max(distSq, 0.0001));
                         // 同位置に重なった場合も、毎フレーム方向が反転しない決定的な法線を使う。
                         const fallbackAngle = (i * 17 + j * 31) * 2.399963229728653;
                         const nx = distSq < 0.0001 ? Math.cos(fallbackAngle) : dx / dist;
                         const nz = distSq < 0.0001 ? Math.sin(fallbackAngle) : dz / dist;
+                        // 各物体の長軸・短軸と現在の向きに沿った接触半径を使う。
+                        const minDist = getFloaterCollisionRadius(a, nx, nz)
+                            + getFloaterCollisionRadius(b, -nx, -nz);
+                        if (distSq >= minDist * minDist) continue;
                         const overlap = minDist - dist;
                         const massA = a.userData.collisionMass || (a.userData.isBoat ? 2.2 : a.userData.isDriftwood ? 1.8 : 1);
                         const massB = b.userData.collisionMass || (b.userData.isBoat ? 2.2 : b.userData.isDriftwood ? 1.8 : 1);
