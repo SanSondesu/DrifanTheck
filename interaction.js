@@ -73,7 +73,7 @@
                     const distanceGain=getFloaterAudioGain(group);
                     if (group.userData.isBottle) {
                         playSoftFloaterTap(distanceGain);
-                        showMessage(group.userData.message);
+                        showMessage(group.userData.message, true);
                         group.userData.isSinking = true; 
                         
                         spawnRipple(group.position); 
@@ -116,7 +116,7 @@
             }
         }
 
-        function showMessage(text, countBottle = true) {
+        function showMessage(text, countBottle = false) {
             const msgText = document.getElementById('message-text');
             if (msgText) msgText.innerText = text;
             
