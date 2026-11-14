@@ -692,9 +692,14 @@
                 const vertexLocalY = -height * .5 + y * sy;
                 return getOceanWaveHeight(vertexX + water.position.x, -(vertexLocalY) + water.position.z, waveTime);
             };
-            const a = THREE.MathUtils.lerp(sample(ix, iy), sample(ix + 1, iy), tx);
-            const b = THREE.MathUtils.lerp(sample(ix, iy + 1), sample(ix + 1, iy + 1), tx);
-            return THREE.MathUtils.lerp(a, b, ty);
+            // PlaneGeometry uses two triangles per cell (a-b-d / b-c-d), not a bilinear patch.
+            // Interpolate on the same triangle selected by the rendered mesh diagonal.
+            const a = sample(ix, iy);
+            const b = sample(ix, iy + 1);
+            const c = sample(ix + 1, iy + 1);
+            const d = sample(ix + 1, iy);
+            if (tx + ty <= 1) return a * (1 - tx - ty) + b * ty + d * tx;
+            return b * (1 - tx) + c * (tx + ty - 1) + d * (1 - ty);
         }
 
         function getFloaterCollisionRadius(floater, dirX, dirZ) {
