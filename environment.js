@@ -644,8 +644,7 @@
             let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25) + (nightRatio * 0.045); 
             renderer.toneMappingExposure = baseExp;
 
-            if (scene.environment) scene.environment.dispose();
-            scene.environment = pmremGenerator.fromScene(sky).texture;
+            scheduleEnvironmentMapUpdate();
             if (window.DrifanEnhancements) DrifanEnhancements.updateTime(progress, dayRatio, sunsetRatio, nightRatio);
         }
 
@@ -668,6 +667,28 @@
         }
 
         let lastRenderTime = 0;
+        let pmremRenderTarget = null;
+        let pmremUpdateTimer = null;
+
+        // 時間ダイヤル操作中の連続生成を避け、最後の空だけを反映する。
+        // 古いテクスチャではなくRenderTarget全体を解放する。
+        function scheduleEnvironmentMapUpdate() {
+            if (!pmremGenerator || !sky || !scene) return;
+            if (pmremUpdateTimer !== null) clearTimeout(pmremUpdateTimer);
+            pmremUpdateTimer = setTimeout(() => {
+                pmremUpdateTimer = null;
+                if (!pmremGenerator || !sky || !scene || !renderer) return;
+                try {
+                    const nextTarget = pmremGenerator.fromScene(sky);
+                    const previousTarget = pmremRenderTarget;
+                    pmremRenderTarget = nextTarget;
+                    scene.environment = nextTarget.texture;
+                    if (previousTarget) previousTarget.dispose();
+                } catch (error) {
+                    console.warn('DrifanTheck: environment map refresh failed; keeping the previous map.', error);
+                }
+            }, 180);
+        }
 
         function animate(now) {
             requestAnimationFrame(animate);
@@ -681,7 +702,7 @@
             const time = now * 0.001;
             const nowMs = now;
             if (window.DrifanEnhancements) {
-                DrifanEnhancements.updateFrame(nowMs, currentNightRatio);
+                DrifanEnhancements.updateFrame(nowMs, currentNightRatio, deltaSeconds);
                 DrifanEnhancements.updateDiscoveryEffects(deltaSeconds);
             }
 
@@ -760,13 +781,13 @@
                         const wind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {x:0,z:0,strength:0};
                         ud.orbitPhase -= (ud.orbitSpeed * 0.01 + wind.strength * 0.012) * frameScale; 
                         
-                        bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
-                        bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
+                        bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius + wind.x * deltaSeconds * 80;
+                        bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius + wind.z * deltaSeconds * 80;
                         bird.position.y = ud.baseY + Math.sin(time * 0.5 + ud.phase) * 15;
                         
                         // 進行方向を向く
-                        const nextX = Math.cos(ud.orbitPhase - 0.1) * ud.orbitRadius;
-                        const nextZ = Math.sin(ud.orbitPhase - 0.1) * ud.orbitRadius;
+                        const nextX = Math.cos(ud.orbitPhase - 0.1) * ud.orbitRadius + wind.x * deltaSeconds * 80;
+                        const nextZ = Math.sin(ud.orbitPhase - 0.1) * ud.orbitRadius + wind.z * deltaSeconds * 80;
                         nextWorldPos.set(nextX, bird.position.y, nextZ);
                         birdsGroup.localToWorld(nextWorldPos);
                         bird.lookAt(nextWorldPos);
