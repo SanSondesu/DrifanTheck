@@ -666,6 +666,37 @@
                 + Math.sin((localX - localY) * 0.0085 + waveTime * 0.88) * 0.18;
         }
 
+        // 頂点変形された水面は頂点間を線形補間して描画される。
+        // 漂流物も同じ補間面の高さを使い、解析式との差による浮き沈みを防ぐ。
+        function getRenderedOceanWaveHeight(worldX, worldZ, waveTime) {
+            if (!water || !water.geometry || !water.geometry.parameters) {
+                return getOceanWaveHeight(worldX, worldZ, waveTime);
+            }
+            const p = water.geometry.parameters;
+            const width = p.width || 40000;
+            const height = p.height || 40000;
+            const nx = Math.max(1, p.widthSegments || 512);
+            const ny = Math.max(1, p.heightSegments || 512);
+            const sx = width / nx;
+            const sy = height / ny;
+            const localX = worldX - water.position.x;
+            const localY = -(worldZ - water.position.z);
+            const gx = THREE.MathUtils.clamp((localX + width * .5) / sx, 0, nx);
+            const gy = THREE.MathUtils.clamp((localY + height * .5) / sy, 0, ny);
+            const ix = Math.min(Math.floor(gx), nx - 1);
+            const iy = Math.min(Math.floor(gy), ny - 1);
+            const tx = gx - ix;
+            const ty = gy - iy;
+            const sample = (x, y) => {
+                const vertexX = -width * .5 + x * sx;
+                const vertexLocalY = -height * .5 + y * sy;
+                return getOceanWaveHeight(vertexX + water.position.x, -(vertexLocalY) + water.position.z, waveTime);
+            };
+            const a = THREE.MathUtils.lerp(sample(ix, iy), sample(ix + 1, iy), tx);
+            const b = THREE.MathUtils.lerp(sample(ix, iy + 1), sample(ix + 1, iy + 1), tx);
+            return THREE.MathUtils.lerp(a, b, ty);
+        }
+
         let lastRenderTime = 0;
         let pmremRenderTarget = null;
         let pmremUpdateTimer = null;
@@ -980,16 +1011,16 @@
                         + Math.sin(crossPhase) * (f.userData.waveAmplitude || 0.012) * 0.32;
                     const waveTime = water && water.userData.waveTimeUniform
                         ? water.userData.waveTimeUniform.value : time * 0.2;
-                    const waveOffset = getOceanWaveHeight(f.position.x, f.position.z, waveTime) + gentleBob;
+                    const waveOffset = getRenderedOceanWaveHeight(f.position.x, f.position.z, waveTime) + gentleBob;
                     f.position.y += waveOffset;
                     f.userData.waveLastOffset = waveOffset;
                     const baseTiltX = f.rotation.x;
                     const baseTiltZ = f.rotation.z;
                     const slopeStep = 5.0;
-                    const slopeX = (getOceanWaveHeight(f.position.x + slopeStep, f.position.z, waveTime)
-                        - getOceanWaveHeight(f.position.x - slopeStep, f.position.z, waveTime)) / (2 * slopeStep);
-                    const slopeZ = (getOceanWaveHeight(f.position.x, f.position.z + slopeStep, waveTime)
-                        - getOceanWaveHeight(f.position.x, f.position.z - slopeStep, waveTime)) / (2 * slopeStep);
+                    const slopeX = (getRenderedOceanWaveHeight(f.position.x + slopeStep, f.position.z, waveTime)
+                        - getRenderedOceanWaveHeight(f.position.x - slopeStep, f.position.z, waveTime)) / (2 * slopeStep);
+                    const slopeZ = (getRenderedOceanWaveHeight(f.position.x, f.position.z + slopeStep, waveTime)
+                        - getRenderedOceanWaveHeight(f.position.x, f.position.z - slopeStep, waveTime)) / (2 * slopeStep);
                     f.rotation.x = baseTiltX + Math.cos(crossPhase) * (f.userData.waveTilt || 0.01) + Math.atan(slopeZ) * 0.42;
                     f.rotation.z = baseTiltZ + Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72 - Math.atan(slopeX) * 0.42;
                 }
