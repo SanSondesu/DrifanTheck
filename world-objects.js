@@ -950,9 +950,19 @@
 
             // 実際のモデル寸法から衝突半径を求める（種類ごとの拡大率も反映）
             floaters.forEach(f => {
+                // 見た目の長軸・短軸を親グループのローカル向きで測り、
+                // 回転後も形状に沿った楕円衝突判定に使う。
+                const originalRotationY = f.rotation.y;
+                f.rotation.y = 0;
+                f.updateMatrixWorld(true);
+                const localBounds = new THREE.Box3().setFromObject(f);
+                const localSize = localBounds.getSize(new THREE.Vector3());
+                f.rotation.y = originalRotationY;
                 f.updateMatrixWorld(true);
                 const bounds = new THREE.Box3().setFromObject(f);
                 const size = bounds.getSize(new THREE.Vector3());
+                f.userData.collisionHalfLength = Math.max(localSize.x, localSize.z) * 0.5 + 0.16;
+                f.userData.collisionHalfWidth = Math.min(localSize.x, localSize.z) * 0.5 + 0.16;
                 f.userData.collisionRadius = Math.max(size.x, size.z) * 0.46 + 0.28;
                 f.userData.tapHitRadius = Math.max(size.x, size.y, size.z) * 0.52 + 0.35;
                 f.userData.tapHitCenterY = bounds.getCenter(new THREE.Vector3()).y - f.position.y;
