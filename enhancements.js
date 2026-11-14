@@ -163,7 +163,6 @@ function updateFrame(now,nightRatio,deltaSeconds=1/60){
   }
   const tapGlow=lantern.userData&&lantern.userData.isGlowing?0.035:0;
   plane.material.opacity=nightRatio*(.045+.03*(.5+.5*Math.sin(t*1.1+phase))+tapGlow);
-  plane.rotation.z=Math.sin(t*.35+phase)*.08;
   const pulse=1+.075*Math.sin(t*.8+phase);plane.scale.set(9.5*pulse,4.5*pulse,1);
  });
 }
