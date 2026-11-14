@@ -157,6 +157,8 @@ function updateFrame(now,nightRatio,deltaSeconds=1/60){
   if(typeof getRenderedOceanWaveHeight==='function'){
    const step=3;
    const slopeX=(getRenderedOceanWaveHeight(plane.position.x+step,plane.position.z,waveTime)-getRenderedOceanWaveHeight(plane.position.x-step,plane.position.z,waveTime))/(2*step);
+   const slopeZ=(getRenderedOceanWaveHeight(plane.position.x,plane.position.z+step,waveTime)-getRenderedOceanWaveHeight(plane.position.x,plane.position.z-step,waveTime))/(2*step);
+   plane.rotation.x=-Math.PI/2+Math.atan(slopeZ)*.55;
    plane.rotation.z=-Math.atan(slopeX)*.55+Math.sin(t*.35+phase)*.025;
   }
   const tapGlow=lantern.userData&&lantern.userData.isGlowing?0.035:0;
