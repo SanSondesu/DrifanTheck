@@ -152,11 +152,11 @@ function updateFrame(now,nightRatio,deltaSeconds=1/60){
   plane.position.x=lantern.position.x+Math.sin(t*.45+phase)*.7;
   plane.position.z=lantern.position.z+Math.cos(t*.38+phase)*.45;
   const waveTime=water&&water.userData&&water.userData.waveTimeUniform?water.userData.waveTimeUniform.value:t*.2;
-  const waveHeight=typeof getOceanWaveHeight==='function'?getOceanWaveHeight(plane.position.x,plane.position.z,waveTime):0;
+  const waveHeight=typeof getRenderedOceanWaveHeight==='function'?getRenderedOceanWaveHeight(plane.position.x,plane.position.z,waveTime):0;
   plane.position.y=waveHeight+.035;
-  if(typeof getOceanWaveHeight==='function'){
+  if(typeof getRenderedOceanWaveHeight==='function'){
    const step=3;
-   const slopeX=(getOceanWaveHeight(plane.position.x+step,plane.position.z,waveTime)-getOceanWaveHeight(plane.position.x-step,plane.position.z,waveTime))/(2*step);
+   const slopeX=(getRenderedOceanWaveHeight(plane.position.x+step,plane.position.z,waveTime)-getRenderedOceanWaveHeight(plane.position.x-step,plane.position.z,waveTime))/(2*step);
    plane.rotation.z=-Math.atan(slopeX)*.55+Math.sin(t*.35+phase)*.025;
   }
   const tapGlow=lantern.userData&&lantern.userData.isGlowing?0.035:0;
