@@ -823,15 +823,19 @@
                     birdsGroup.children.forEach(bird => {
                         const ud = bird.userData;
                         const wind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {x:0,z:0,strength:0};
-                        ud.orbitPhase -= (ud.orbitSpeed * 0.01 + wind.strength * 0.012) * frameScale; 
-                        
-                        bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius + wind.x * deltaSeconds * 80;
-                        bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius + wind.z * deltaSeconds * 80;
+                        // 風の向きを軌道の接線方向へ投影し、追い風・向かい風で飛行速度を微調整。
+                        const tangentX = -Math.sin(ud.orbitPhase);
+                        const tangentZ = Math.cos(ud.orbitPhase);
+                        const windAlongPath = wind.x * tangentX + wind.z * tangentZ;
+                        ud.orbitPhase -= (ud.orbitSpeed * 0.6 + windAlongPath * 0.35) * deltaSeconds;
+
+                        bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
+                        bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
                         bird.position.y = ud.baseY + Math.sin(time * 0.5 + ud.phase) * 15;
                         
                         // 進行方向を向く
-                        const nextX = Math.cos(ud.orbitPhase - 0.1) * ud.orbitRadius + wind.x * deltaSeconds * 80;
-                        const nextZ = Math.sin(ud.orbitPhase - 0.1) * ud.orbitRadius + wind.z * deltaSeconds * 80;
+                        const nextX = Math.cos(ud.orbitPhase - 0.1) * ud.orbitRadius;
+                        const nextZ = Math.sin(ud.orbitPhase - 0.1) * ud.orbitRadius;
                         nextWorldPos.set(nextX, bird.position.y, nextZ);
                         birdsGroup.localToWorld(nextWorldPos);
                         bird.lookAt(nextWorldPos);
