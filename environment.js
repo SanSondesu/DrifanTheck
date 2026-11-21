@@ -645,7 +645,11 @@
             renderer.toneMappingExposure = baseExp;
 
             if (scene.environment) scene.environment.dispose();
-            scene.environment = pmremGenerator.fromScene(sky).texture;
+            if (!scene.environment || performance.now() - (window._drifanLastEnvironmentMapUpdate || 0) >= 500) {
+                if (scene.environment) scene.environment.dispose();
+                scene.environment = pmremGenerator.fromScene(sky).texture;
+                window._drifanLastEnvironmentMapUpdate = performance.now();
+            }
             if (window.DrifanEnhancements) DrifanEnhancements.updateTime(progress, dayRatio, sunsetRatio, nightRatio);
         }
 
