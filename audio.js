@@ -273,8 +273,8 @@
             biquadFilter.frequency.setValueAtTime(biquadFilter.frequency.value, now);
             
             // Water shader clock provides a slow phase cue; wind adds only a restrained intensity lift.
-            const waterPhase = water && water.material && water.material.uniforms && water.material.uniforms.time
-                ? water.material.uniforms.time.value : now * 0.2;
+            const waterPhase = water && water.userData && water.userData.waveTimeUniform
+                ? water.userData.waveTimeUniform.value : now * 0.75;
             const swell = 0.5 + 0.5 * Math.sin(waterPhase * 0.72);
             const level = THREE.MathUtils.clamp(windLevel, 0, 1);
             const waveGain = 0.026 + swell * 0.009 + level * 0.012;
