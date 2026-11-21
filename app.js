@@ -57,6 +57,7 @@ let scene, camera, renderer, water, sky;
         let previewScene, previewCamera, previewRenderer, previewModel;
         let previewReqId;
         let previewIsDragging = false;
+        let previewIsPinching = false;
         let previewPrevMouse = {x: 0, y: 0};
         let previewPinchDist = 0;
         

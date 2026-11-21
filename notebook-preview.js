@@ -265,7 +265,7 @@
                 e.stopPropagation();
             });
             window.addEventListener('pointermove', (e) => {
-                if(!previewIsDragging || !previewModel) return;
+                if(!previewIsDragging || previewIsPinching || !previewModel) return;
                 const dx = e.clientX - previewPrevMouse.x;
                 const dy = e.clientY - previewPrevMouse.y;
                 const isRecordPreview = previewModel.userData && previewModel.userData.previewKind === 'record';
@@ -294,19 +294,34 @@
             // スマホのピンチ操作（2本指ズーム）
             canvas.addEventListener('touchstart', (e) => {
                 if(e.touches.length === 2) {
+                    // 2本指操作へ切り替えた瞬間に1本指ドラッグを止め、回転とズームを分離。
+                    previewIsPinching = true;
+                    previewIsDragging = false;
                     previewPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    e.preventDefault();
                 }
             }, {passive: false});
             canvas.addEventListener('touchmove', (e) => {
                 if(e.touches.length === 2) {
                     const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    const diff = previewPinchDist - dist;
-                    previewCamera.position.z += diff * 0.03;
-                    previewCamera.position.z = THREE.MathUtils.clamp(previewCamera.position.z, 2.5, 15);
+                    if (previewPinchDist > 0) {
+                        const diff = previewPinchDist - dist;
+                        previewCamera.position.z += diff * 0.03;
+                        previewCamera.position.z = THREE.MathUtils.clamp(previewCamera.position.z, 2.5, 15);
+                    }
                     previewPinchDist = dist;
                     e.preventDefault();
                 }
             }, {passive: false});
+            const finishPreviewPinch = (e) => {
+                if (!e.touches || e.touches.length < 2) {
+                    previewIsPinching = false;
+                    previewIsDragging = false;
+                    previewPinchDist = 0;
+                }
+            };
+            canvas.addEventListener('touchend', finishPreviewPinch, {passive: true});
+            canvas.addEventListener('touchcancel', finishPreviewPinch, {passive: true});
         }
 
         function resizePreview() {

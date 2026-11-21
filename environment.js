@@ -644,8 +644,7 @@
             let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25) + (nightRatio * 0.045); 
             renderer.toneMappingExposure = baseExp;
 
-            if (scene.environment) scene.environment.dispose();
-            scene.environment = pmremGenerator.fromScene(sky).texture;
+            scheduleEnvironmentMapUpdate();
             if (window.DrifanEnhancements) DrifanEnhancements.updateTime(progress, dayRatio, sunsetRatio, nightRatio);
         }
 
@@ -667,7 +666,78 @@
                 + Math.sin((localX - localY) * 0.0085 + waveTime * 0.88) * 0.18;
         }
 
+        // 頂点変形された水面は頂点間を線形補間して描画される。
+        // 漂流物も同じ補間面の高さを使い、解析式との差による浮き沈みを防ぐ。
+        function getRenderedOceanWaveHeight(worldX, worldZ, waveTime) {
+            if (!water || !water.geometry || !water.geometry.parameters) {
+                return getOceanWaveHeight(worldX, worldZ, waveTime);
+            }
+            const p = water.geometry.parameters;
+            const width = p.width || 40000;
+            const height = p.height || 40000;
+            const nx = Math.max(1, p.widthSegments || 512);
+            const ny = Math.max(1, p.heightSegments || 512);
+            const sx = width / nx;
+            const sy = height / ny;
+            const localX = worldX - water.position.x;
+            const localY = -(worldZ - water.position.z);
+            const gx = THREE.MathUtils.clamp((localX + width * .5) / sx, 0, nx);
+            const gy = THREE.MathUtils.clamp((localY + height * .5) / sy, 0, ny);
+            const ix = Math.min(Math.floor(gx), nx - 1);
+            const iy = Math.min(Math.floor(gy), ny - 1);
+            const tx = gx - ix;
+            const ty = gy - iy;
+            const sample = (x, y) => {
+                const vertexX = -width * .5 + x * sx;
+                const vertexLocalY = -height * .5 + y * sy;
+                return getOceanWaveHeight(vertexX + water.position.x, -(vertexLocalY) + water.position.z, waveTime);
+            };
+            // PlaneGeometry uses two triangles per cell (a-b-d / b-c-d), not a bilinear patch.
+            // Interpolate on the same triangle selected by the rendered mesh diagonal.
+            const a = sample(ix, iy);
+            const b = sample(ix, iy + 1);
+            const c = sample(ix + 1, iy + 1);
+            const d = sample(ix + 1, iy);
+            if (tx + ty <= 1) return a * (1 - tx - ty) + b * ty + d * tx;
+            return b * (1 - tx) + c * (tx + ty - 1) + d * (1 - ty);
+        }
+
+        function getFloaterCollisionRadius(floater, dirX, dirZ) {
+            const data = floater.userData || {};
+            const fallback = data.collisionRadius || 1.5;
+            const halfLength = data.collisionHalfLength || fallback;
+            const halfWidth = data.collisionHalfWidth || fallback;
+            const angle = floater.rotation.y || 0;
+            const along = dirX * Math.cos(angle) - dirZ * Math.sin(angle);
+            const across = dirX * Math.sin(angle) + dirZ * Math.cos(angle);
+            const normalized = (along * along) / (halfLength * halfLength)
+                + (across * across) / (halfWidth * halfWidth);
+            return normalized > 0 ? 1 / Math.sqrt(normalized) : fallback;
+        }
+
         let lastRenderTime = 0;
+        let pmremRenderTarget = null;
+        let pmremUpdateTimer = null;
+
+        // 時間ダイヤル操作中の連続生成を避け、最後の空だけを反映する。
+        // 古いテクスチャではなくRenderTarget全体を解放する。
+        function scheduleEnvironmentMapUpdate() {
+            if (!pmremGenerator || !sky || !scene) return;
+            if (pmremUpdateTimer !== null) clearTimeout(pmremUpdateTimer);
+            pmremUpdateTimer = setTimeout(() => {
+                pmremUpdateTimer = null;
+                if (!pmremGenerator || !sky || !scene || !renderer) return;
+                try {
+                    const nextTarget = pmremGenerator.fromScene(sky);
+                    const previousTarget = pmremRenderTarget;
+                    pmremRenderTarget = nextTarget;
+                    scene.environment = nextTarget.texture;
+                    if (previousTarget) previousTarget.dispose();
+                } catch (error) {
+                    console.warn('DrifanTheck: environment map refresh failed; keeping the previous map.', error);
+                }
+            }, 180);
+        }
 
         function animate(now) {
             requestAnimationFrame(animate);
@@ -681,7 +751,7 @@
             const time = now * 0.001;
             const nowMs = now;
             if (window.DrifanEnhancements) {
-                DrifanEnhancements.updateFrame(nowMs, currentNightRatio);
+                DrifanEnhancements.updateFrame(nowMs, currentNightRatio, deltaSeconds);
                 DrifanEnhancements.updateDiscoveryEffects(deltaSeconds);
             }
 
@@ -758,8 +828,12 @@
                     birdsGroup.children.forEach(bird => {
                         const ud = bird.userData;
                         const wind = window.DrifanEnhancements ? DrifanEnhancements.getWind() : {x:0,z:0,strength:0};
-                        ud.orbitPhase -= (ud.orbitSpeed * 0.01 + wind.strength * 0.012) * frameScale; 
-                        
+                        // 風の向きを軌道の接線方向へ投影し、追い風・向かい風で飛行速度を微調整。
+                        const tangentX = -Math.sin(ud.orbitPhase);
+                        const tangentZ = Math.cos(ud.orbitPhase);
+                        const windAlongPath = wind.x * tangentX + wind.z * tangentZ;
+                        ud.orbitPhase -= (ud.orbitSpeed * 0.6 + windAlongPath * 0.35) * deltaSeconds;
+
                         bird.position.x = Math.cos(ud.orbitPhase) * ud.orbitRadius;
                         bird.position.z = Math.sin(ud.orbitPhase) * ud.orbitRadius;
                         bird.position.y = ud.baseY + Math.sin(time * 0.5 + ud.phase) * 15;
@@ -959,16 +1033,16 @@
                         + Math.sin(crossPhase) * (f.userData.waveAmplitude || 0.012) * 0.32;
                     const waveTime = water && water.userData.waveTimeUniform
                         ? water.userData.waveTimeUniform.value : time * 0.2;
-                    const waveOffset = getOceanWaveHeight(f.position.x, f.position.z, waveTime) + gentleBob;
+                    const waveOffset = getRenderedOceanWaveHeight(f.position.x, f.position.z, waveTime) + gentleBob;
                     f.position.y += waveOffset;
                     f.userData.waveLastOffset = waveOffset;
                     const baseTiltX = f.rotation.x;
                     const baseTiltZ = f.rotation.z;
                     const slopeStep = 5.0;
-                    const slopeX = (getOceanWaveHeight(f.position.x + slopeStep, f.position.z, waveTime)
-                        - getOceanWaveHeight(f.position.x - slopeStep, f.position.z, waveTime)) / (2 * slopeStep);
-                    const slopeZ = (getOceanWaveHeight(f.position.x, f.position.z + slopeStep, waveTime)
-                        - getOceanWaveHeight(f.position.x, f.position.z - slopeStep, waveTime)) / (2 * slopeStep);
+                    const slopeX = (getRenderedOceanWaveHeight(f.position.x + slopeStep, f.position.z, waveTime)
+                        - getRenderedOceanWaveHeight(f.position.x - slopeStep, f.position.z, waveTime)) / (2 * slopeStep);
+                    const slopeZ = (getRenderedOceanWaveHeight(f.position.x, f.position.z + slopeStep, waveTime)
+                        - getRenderedOceanWaveHeight(f.position.x, f.position.z - slopeStep, waveTime)) / (2 * slopeStep);
                     f.rotation.x = baseTiltX + Math.cos(crossPhase) * (f.userData.waveTilt || 0.01) + Math.atan(slopeZ) * 0.42;
                     f.rotation.z = baseTiltZ + Math.sin(wavePhase) * (f.userData.waveTilt || 0.01) * 0.72 - Math.atan(slopeX) * 0.42;
                 }
@@ -984,14 +1058,16 @@
                         const b = floaters[j];
                         if (b.userData.isBottle && b.userData.isSinking) continue;
                         const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
-                        const minDist = (a.userData.collisionRadius || 1.5) + (b.userData.collisionRadius || 1.5);
                         const distSq = dx * dx + dz * dz;
-                        if (distSq >= minDist * minDist) continue;
                         const dist = Math.sqrt(Math.max(distSq, 0.0001));
                         // 同位置に重なった場合も、毎フレーム方向が反転しない決定的な法線を使う。
                         const fallbackAngle = (i * 17 + j * 31) * 2.399963229728653;
                         const nx = distSq < 0.0001 ? Math.cos(fallbackAngle) : dx / dist;
                         const nz = distSq < 0.0001 ? Math.sin(fallbackAngle) : dz / dist;
+                        // 各物体の長軸・短軸と現在の向きに沿った接触半径を使う。
+                        const minDist = getFloaterCollisionRadius(a, nx, nz)
+                            + getFloaterCollisionRadius(b, -nx, -nz);
+                        if (distSq >= minDist * minDist) continue;
                         const overlap = minDist - dist;
                         const massA = a.userData.collisionMass || (a.userData.isBoat ? 2.2 : a.userData.isDriftwood ? 1.8 : 1);
                         const massB = b.userData.collisionMass || (b.userData.isBoat ? 2.2 : b.userData.isDriftwood ? 1.8 : 1);
