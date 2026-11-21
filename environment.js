@@ -644,7 +644,6 @@
             let baseExp = 0.5 + (dayRatio * 0.2) - (sunsetRatio * 0.25) + (nightRatio * 0.045); 
             renderer.toneMappingExposure = baseExp;
 
-            if (scene.environment) scene.environment.dispose();
             if (!scene.environment || performance.now() - (window._drifanLastEnvironmentMapUpdate || 0) >= 500) {
                 if (scene.environment) scene.environment.dispose();
                 scene.environment = pmremGenerator.fromScene(sky).texture;
