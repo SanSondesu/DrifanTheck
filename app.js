@@ -232,6 +232,29 @@ let scene, camera, renderer, water, sky;
             moon = new THREE.Vector3();
 
             const waterGeometry = new THREE.PlaneGeometry(40000, 40000, 512, 512);
+            // 既存の頂点数は増やさず、カメラが回り込む中心域だけを高密度化する。
+            // 中心±400単位を256分割（約3.125単位間隔）、遠景を残り256分割に配分。
+            // 波の数式・UV・既存の水面マテリアルは維持し、頂点配置だけを非一様にする。
+            const waterGridSegments = 512;
+            const waterRowLength = waterGridSegments + 1;
+            const remapWaterGridCoordinate = (index) => {
+                if (index <= 128) return -20000 + index * (19600 / 128);
+                if (index <= 384) return -400 + (index - 128) * (800 / 256);
+                return 400 + (index - 384) * (19600 / 128);
+            };
+            const waterPositions = waterGeometry.attributes.position;
+            for (let vertex = 0; vertex < waterPositions.count; vertex++) {
+                const gridX = vertex % waterRowLength;
+                const gridY = Math.floor(vertex / waterRowLength);
+                waterPositions.setXY(
+                    vertex,
+                    remapWaterGridCoordinate(gridX),
+                    remapWaterGridCoordinate(waterGridSegments - gridY)
+                );
+            }
+            waterPositions.needsUpdate = true;
+            waterGeometry.computeVertexNormals();
+            waterGeometry.computeBoundingSphere();
             water = new THREE.Water(
                 waterGeometry,
                 {
