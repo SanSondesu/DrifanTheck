@@ -1,3 +1,7 @@
+*, *::before, *::after {
+            box-sizing: border-box;
+        }
+
 body {
             margin: 0;
             overflow: hidden;
@@ -286,8 +290,11 @@ body {
         #message-container {
             padding: 45px 40px;
             align-items: center;
-            min-width: 320px;
-            max-width: 80%;
+            width: min(720px, calc(100vw - 32px));
+            min-width: 0;
+            max-width: 80vw;
+            max-height: calc(100dvh - 32px);
+            overflow-y: auto;
         }
         
         #message-text {
@@ -390,7 +397,9 @@ body {
             display: none;
             flex-direction: column;
             align-items: center;
-            width: 360px;
+            width: min(360px, calc(100vw - 32px));
+            max-height: calc(100dvh - 32px);
+            overflow-y: auto;
             z-index: 100;
             pointer-events: auto;
             border: 1px solid rgba(255, 255, 255, 0.4);
@@ -650,13 +659,34 @@ body {
         
         @media (max-width: 600px) {
             #notebook-container {
+                width: calc(100vw - 24px);
+                max-width: 700px;
                 height: 85vh;
+                height: 85dvh;
                 padding: 20px 25px !important;
                 flex-direction: column;
                 display: none;
             }
             .notebook-body {
                 flex-direction: column;
+            }
+            #message-container {
+                width: calc(100vw - 24px);
+                max-width: none;
+                padding: 28px 22px;
+            }
+            #message-text {
+                font-size: clamp(1.05rem, 4.5vw, 1.35rem);
+                margin-bottom: 22px;
+            }
+            #compose-container {
+                width: calc(100vw - 24px);
+                max-width: 420px;
+                padding: 28px 22px;
+            }
+            #compose-textarea {
+                box-sizing: border-box;
+                max-width: 100%;
             }
             #preview-area {
                 flex: none;
