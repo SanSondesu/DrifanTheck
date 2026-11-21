@@ -150,6 +150,8 @@ function updateFrame(now,nightRatio){
   if(!lantern.parent)return;
   plane.position.x=lantern.position.x+Math.sin(t*.45+phase)*.7;
   plane.position.z=lantern.position.z+Math.cos(t*.38+phase)*.45;
+  const waveTime=water&&water.userData&&water.userData.waveTimeUniform?water.userData.waveTimeUniform.value:0;
+  plane.position.y=typeof getOceanWaveHeight==='function'?getOceanWaveHeight(plane.position.x,plane.position.z,waveTime)+.035:.035;
   const tapGlow=lantern.userData&&lantern.userData.isGlowing?0.035:0;
   plane.material.opacity=nightRatio*(.045+.03*(.5+.5*Math.sin(t*1.1+phase))+tapGlow);
   plane.rotation.z=Math.sin(t*.35+phase)*.08;
